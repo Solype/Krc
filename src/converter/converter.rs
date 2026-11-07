@@ -7,6 +7,7 @@ use super::ir;
 
 pub struct Converter<'a> {
     pub(super) program: &'a Program,
+    /// Mapping the mangled function name with its index
     pub(super) functions: BTreeMap<String, usize>,
     /// The IR being built: its strings and floats are filled while the functions are converted
     pub(super) ir: ir::structs::Program,

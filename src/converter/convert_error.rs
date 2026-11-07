@@ -51,6 +51,8 @@ pub enum ConvertErrorKind {
     BreakOutOfLoop,
     /// `넘어가요` out of a loop
     ContinueOutOfLoop,
+    /// Invalid character
+    LatinCharInNonLibCFunction,
 }
 
 /// A conversion error and where it happened
@@ -128,6 +130,9 @@ impl fmt::Display for ConvertErrorKind {
             Self::NotInteger => write!(f, "the bounds and the variable of 세면서 must be 정수"),
             Self::BreakOutOfLoop => write!(f, "그만해요 can only be used in a loop"),
             Self::ContinueOutOfLoop => write!(f, "넘어가요 can only be used in a loop"),
+            Self::LatinCharInNonLibCFunction => {
+                write!(f, "Latin is only for LibC function declaration")
+            }
         }
     }
 }

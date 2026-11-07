@@ -18,20 +18,15 @@ impl<'a> Converter<'a> {
                 self.functions.insert(func.name.clone(), i);
                 continue;
             }
-            let mut fullname = func.name.clone()
-                + &func
-                    .params
-                    .iter()
-                    .map(|p| format!("${}", p.ty))
-                    .collect::<String>();
-            if func.variadic {
-                fullname += "$...";
+            if func.name.is_ascii() {
+                let kind = ConvertErrorKind::LatinCharInNonLibCFunction;
+                return Err(ConvertError::new(kind, func.span));
             }
-            if self.functions.contains_key(&fullname) {
+            if self.functions.contains_key(&func.mangled_name) {
                 let kind = ConvertErrorKind::SameSignature(func.name.clone());
                 return Err(ConvertError::new(kind, func.span));
             }
-            self.functions.insert(fullname, i);
+            self.functions.insert(func.mangled_name.clone(), i);
         }
         Ok(())
     }
