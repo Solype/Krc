@@ -223,6 +223,20 @@ instructions. The AI helped me complete the IR structs; I wrote the rest by hand
 | Unsigned `/`, `%` and `>>` (issue #1, pull request #35) | Me, reviewed by AI |
 | Documentation, tests and deployment (README, website, release `v0.1.0`) | AI, at my request |
 
+## November 7 and 8: issues #33, #4, #12 and #44
+
+| Element | Who |
+|---|---|
+| A declared variable set to zero (issue #33, pull request #41): the code | To be confirmed (see below) |
+| A declared variable set to zero: `sample/16_zero.kr`, checked under gdb and with the compiler before the fix | AI, at my request |
+| `scripts/align_branches.sh`, which merges then rebases every branch on `main` (pull request #42) | AI, at my request |
+| Sized reads in return and call arguments (issue #4, pull request #43) | Me; the AI checked each step (tests, samples, generated code), found that a 1-byte value needs `movzx`, wrote that part as an example, which I rewrote, and restored a comment |
+| Function names: a latin name refused for a function with a body (issue #12) | Me |
+| Function names: a `외부` function must have a latin name, the messages, the error samples, the specs and the rewrite of issue #12 | AI, at my request |
+| A function of another file declared without a body, several files without a `main` each, the "Several files" section of `docs/LANGUAGE_DESIGN.md`, issue #44 and its specs | AI, at my request, from a design we chose together |
+| Commits, pushes and pull requests of these issues | AI, at my request |
+| Explanations (the bug of issue #4 in the generated code, where types become strings for the mangling, why "no body means libc" breaks several files) | AI, explanations only |
+
 ## How I used the AI
 
 Over the whole project, the AI was mostly used to **explain**: how a format, an encoding or an
@@ -248,3 +262,6 @@ without the AI. I still have to state their status:
 - `b04d848` to `7b6e27c` (October 10 to 12), except `d198bad`: printing the AST, float literals,
   sentence declarations, spans in the AST, samples, the start of the converter. The sessions are
   no longer available.
+- `b3c418f` and `6a814a5` (November 7): a declared variable set to zero (`Instr::Zero`,
+  `generate_zero`, `instructions_tests.rs`). The changes were already staged when the AI session
+  that committed them started.
