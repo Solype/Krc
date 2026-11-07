@@ -11,6 +11,11 @@ impl<'a> Converter<'a> {
         for (i, func) in self.program.functions.iter().enumerate() {
             // `외부` and `main`: the libc symbols, their name as is for the linker
             if func.body.is_none() || func.name == "main" {
+                // shortcut: no body means libc until a function of another file can be declared (#44)
+                if !func.name.is_ascii() {
+                    let kind = ConvertErrorKind::ExternNotLatin(func.name.clone());
+                    return Err(ConvertError::new(kind, func.span));
+                }
                 if self.functions.contains_key(&func.name) {
                     let kind = ConvertErrorKind::SameSymbol(func.name.clone());
                     return Err(ConvertError::new(kind, func.span));
