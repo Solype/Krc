@@ -51,6 +51,10 @@ pub enum ConvertErrorKind {
     BreakOutOfLoop,
     /// `넘어가요` out of a loop
     ContinueOutOfLoop,
+    /// A function with a body and a latin name: only a `외부` one can have it
+    LatinCharInNonLibCFunction,
+    /// A `외부` function whose name is not latin: `외부` is for the libc
+    ExternNotLatin(String),
 }
 
 /// A conversion error and where it happened
@@ -128,6 +132,14 @@ impl fmt::Display for ConvertErrorKind {
             Self::NotInteger => write!(f, "the bounds and the variable of 세면서 must be 정수"),
             Self::BreakOutOfLoop => write!(f, "그만해요 can only be used in a loop"),
             Self::ContinueOutOfLoop => write!(f, "넘어가요 can only be used in a loop"),
+            Self::LatinCharInNonLibCFunction => write!(
+                f,
+                "a latin name is only for a 외부 function: a function with a body is a verb in 다"
+            ),
+            Self::ExternNotLatin(name) => write!(
+                f,
+                "'{name}' is not latin: 외부 is only for the libc functions, whose names are latin"
+            ),
         }
     }
 }
