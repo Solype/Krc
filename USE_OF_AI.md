@@ -223,6 +223,14 @@ instructions. The AI helped me complete the IR structs; I wrote the rest by hand
 | Unsigned `/`, `%` and `>>` (issue #1, pull request #35) | Me, reviewed by AI |
 | Documentation, tests and deployment (README, website, release `v0.1.0`) | AI, at my request |
 
+## November 7 and 8: issues #33, #4, #12 and #44
+
+| Element | Who |
+|---|---|
+| Fixes of issues #4 and #12 | Me, reviewed and completed by AI |
+| Several files (issue #44), samples, specs, branch script, documentation | AI, at my request |
+| Commits, pull requests, explanations | AI |
+
 ## How I used the AI
 
 Over the whole project, the AI was mostly used to **explain**: how a format, an encoding or an
@@ -248,3 +256,4 @@ without the AI. I still have to state their status:
 - `b04d848` to `7b6e27c` (October 10 to 12), except `d198bad`: printing the AST, float literals,
   sentence declarations, spans in the AST, samples, the start of the converter. The sessions are
   no longer available.
+- `b3c418f` and `6a814a5` (November 7): a declared variable set to zero (issue #33).

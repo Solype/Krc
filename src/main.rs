@@ -81,10 +81,13 @@ fn compile(args: &Args, path: &str, main_parser: &Parser) -> Result<String, Box<
         format!("{}:{line}:{col}: {err}", path)
     })?;
     print!("{ast}");
-    let ir = Converter::new(&ast).convert().map_err(|err| {
-        let (line, col) = err.span.line_col(&source);
-        format!("{}:{line}:{col}: {err}", path)
-    })?;
+    // in several files, only one has the main
+    let ir = Converter::new(&ast, args.paths.len() == 1)
+        .convert()
+        .map_err(|err| {
+            let (line, col) = err.span.line_col(&source);
+            format!("{}:{line}:{col}: {err}", path)
+        })?;
     print!("{ir}");
     let object = Path::new(path)
         .with_extension("o")

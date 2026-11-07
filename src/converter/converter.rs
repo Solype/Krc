@@ -11,12 +11,15 @@ pub struct Converter<'a> {
     pub(super) functions: BTreeMap<String, usize>,
     /// The IR being built: its strings and floats are filled while the functions are converted
     pub(super) ir: ir::structs::Program,
+    /// The program is one file: it must have its `main`
+    pub(super) needs_main: bool,
 }
 
 impl<'a> Converter<'a> {
-    pub fn new(program: &'a Program) -> Self {
+    pub fn new(program: &'a Program, needs_main: bool) -> Self {
         Self {
             program,
+            needs_main,
             functions: BTreeMap::new(),
             ir: ir::structs::Program::default(),
         }

@@ -62,6 +62,8 @@ Reference example (first slice):
 
 - A function is a **verb**, declared in its dictionary form (`더하다`, `계산하다`, `먹다`).
   The only exception to the all-Korean language: `main`, which is never called in the code.
+  A latin name is refused for any other function, except a `외부` one (the libc), which must
+  have one.
 - **`다` marks functions**: every word ending in `다` is a verb, so a function. A variable or
   parameter name cannot end in `다` (`바다`, "the sea"). This lets the compiler recognize a verb
   without context, even when it is called before its declaration. A word in `다` not followed by
@@ -157,6 +159,8 @@ parameters.
 - Each version has its own symbol in the object file (the name of the verb completed with the
   types of the parameters), so that the linker tells them apart.
 - `외부` functions cannot be overloaded: C has only one symbol per name.
+- A function of another file is declared without a body and without `외부`: it gets the same
+  symbol as its definition there (see Several files).
 
 ### Examples
 
@@ -300,7 +304,8 @@ choice against the 받침 (`나을` → "받침이 없으니 '를'을 쓰세요"
 | ★ | function | `TYPE을/를 반환하는 VERB다(TYPE name, …) { … }` | "VERB, which gives a TYPE"; without return: `VERB다(…) { … }` |
 | | variable | `NAME은/는 VALUE이에요/예요` or `NAME은/는 TYPE이에요/예요` | with a value: deduced type (`0` → `정수`, `0.5` → `소수`); with a type: default value (zero of the type); `이에요` after a consonant, `예요` after a vowel; mutable by default |
 | | constant | `고정된 NAME은/는 VALUE이에요/예요` | see Modifiers |
-| ★ | external function (libc) | `외부 TYPE을/를 반환하는 name(TYPE name, …)` | latin name, no body; `…` for variadics: `외부 정수를 반환하는 printf(문자 주소 형식, …)` |
+| | function of another file | `TYPE을/를 반환하는 VERB다(TYPE name, …)` | no body, no `외부`: defined in another file of the program, see Several files |
+| ★ | external function (libc) | `외부 TYPE을/를 반환하는 name(TYPE name, …)` | latin name only (`외부` is for the libc), no body; `…` for variadics: `외부 정수를 반환하는 printf(문자 주소 형식, …)` |
 | | structure | 구조 | |
 | | export / public | | |
 
@@ -317,6 +322,36 @@ The parser looks at what comes before `이에요/예요`: a type keyword gives a
 value, anything else a value. Default values: `0`, `0.0`, `거짓`, `빈 주소`.
 `고정된` with a type alone (`고정된 개수는 정수예요`) is an error: the constant would be zero
 forever.
+
+### Several files
+
+A program can be split into several files, compiled together: `compiler -x lib.kr prog.kr`.
+A file calls a function of another file through a declaration without a body and without
+`외부`, a header:
+
+```
+// lib.kr
+정수를 반환하는 더하다(정수 가, 정수 나) {
+    (가 + 나)를 반환해요.
+}
+
+// prog.kr
+정수를 반환하는 더하다(정수 가, 정수 나)     // defined in lib.kr
+
+정수를 반환하는 main() {
+    결과는 정수예요.
+    40과 2를 더해서 결과에 넣어요.
+    결과를 반환해요.                        // 42
+}
+```
+
+- `외부` is only for the libc: a latin name, the symbol as is (`printf`).
+- A header has a name in `다` and the symbol of its definition (`더하다$int$int`), so its
+  parameter types must be the same as there.
+- A single file must have its `main`. With several files, the linker reports a missing or a
+  second `main`.
+- A header and the definition of the same function in one file: refused for now (the same
+  signature twice).
 
 ## Types
 

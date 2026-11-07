@@ -21,7 +21,7 @@ impl fmt::Display for Program {
 /// `fn 더하다(int 가, int 나) -> int { … }`, `extern fn printf(char& 형식, ...) -> int`
 impl fmt::Display for Function {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if self.body.is_none() {
+        if self.external {
             write!(f, "extern ")?;
         }
         let mut params: Vec<String> = self.params.iter().map(Param::to_string).collect();

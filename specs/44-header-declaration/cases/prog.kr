@@ -1,0 +1,9 @@
+// #44: 더하다 is defined in lib.kr, declared here without a body.
+
+정수를 반환하는 더하다(정수 가, 정수 나)
+
+정수를 반환하는 main() {
+    결과는 정수예요.
+    40과 2를 더해서 결과에 넣어요.
+    결과를 반환해요.
+}
