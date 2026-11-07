@@ -19,8 +19,10 @@ pub struct Function {
     pub params: Vec<Param>,
     /// `, …` after the last parameter: any number of arguments (`printf`)
     pub variadic: bool,
-    /// `None` for `외부`: declared here, defined elsewhere (libc)
+    /// `None` without a body: declared here, defined elsewhere (the libc, or another file)
     pub body: Option<Vec<Statement>>,
+    /// `외부`: a libc function, whose symbol is its name as is
+    pub external: bool,
 }
 
 /// `정수 가`

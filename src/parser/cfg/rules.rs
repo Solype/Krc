@@ -82,6 +82,13 @@ pub const RULES: &[ParserProduction] = &[
         NTerm(Block),
     ),
     rule!(Function => term!(Verb::Da), NTerm(Block)),
+    // without a body: a function of another file, defined there
+    rule!(Function =>
+        NTerm(FunctionHead),
+        term!(Punctuation::LParen),
+        NTerm(Parameters),
+        term!(Punctuation::RParen),
+    ),
     rule!(ExternFunction =>
         term!(Keyword::Extern),
         NTerm(FunctionHead),

@@ -99,7 +99,7 @@ fn function(node: &TreeNode) -> Result<Function, PostParseError> {
     let [inner] = branch(node).1 else {
         unreachable!()
     };
-    let (head, params, body) = match branch(inner) {
+    let (head, params, body, external) = match branch(inner) {
         // Function → VERB-고 TypeSpec 를 반환 Block
         (NTerm::Function, [name @ TreeNode::Leaf(_), return_type, _, _, body]) => {
             return Ok(Function {
@@ -110,6 +110,7 @@ fn function(node: &TreeNode) -> Result<Function, PostParseError> {
                 params: Vec::new(),
                 variadic: false,
                 body: Some(block(body)?),
+                external: false,
             });
         }
         // Function → VERB-다 Block
@@ -122,12 +123,15 @@ fn function(node: &TreeNode) -> Result<Function, PostParseError> {
                 params: Vec::new(),
                 variadic: false,
                 body: Some(block(body)?),
+                external: false,
             });
         }
         // Function → FunctionHead ( Parameters ) Block
-        (NTerm::Function, [head, _, params, _, body]) => (head, params, Some(block(body)?)),
+        (NTerm::Function, [head, _, params, _, body]) => (head, params, Some(block(body)?), false),
+        // Function → FunctionHead ( Parameters ): a function of another file
+        (NTerm::Function, [head, _, params, _]) => (head, params, None, false),
         // ExternFunction → 외부 FunctionHead ( Parameters )
-        (NTerm::ExternFunction, [_, head, _, params, _]) => (head, params, None),
+        (NTerm::ExternFunction, [_, head, _, params, _]) => (head, params, None, true),
         // Function → SentenceParameters 받아 VERB-고 TypeSpec 를 반환 Block
         (NTerm::Function, [params, _, name, return_type, _, _, body]) => {
             let params = sentence_parameters(params)?;
@@ -139,6 +143,7 @@ fn function(node: &TreeNode) -> Result<Function, PostParseError> {
                 params,
                 variadic: false,
                 body: Some(block(body)?),
+                external: false,
             });
         }
         _ => unreachable!(),
@@ -146,7 +151,7 @@ fn function(node: &TreeNode) -> Result<Function, PostParseError> {
     let (name, name_span, return_type) = function_head(head)?;
     let (params, variadic) = parameters(params)?;
     // `외부` and `main`: the libc symbols, their name as is for the linker
-    let is_libc = body.is_none() || name == "main";
+    let is_libc = external || name == "main";
     Ok(Function {
         name: name.clone(),
         mangled_name: mangle_name(name, &params, variadic, is_libc),
@@ -155,6 +160,7 @@ fn function(node: &TreeNode) -> Result<Function, PostParseError> {
         params,
         variadic,
         body,
+        external,
     })
 }
 

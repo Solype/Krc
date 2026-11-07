@@ -10,8 +10,8 @@ impl<'a> Converter<'a> {
     pub fn get_all_functions(&mut self) -> Result<(), ConvertError> {
         for (i, func) in self.program.functions.iter().enumerate() {
             // `외부` and `main`: the libc symbols, their name as is for the linker
-            if func.body.is_none() || func.name == "main" {
-                // shortcut: no body means libc until a function of another file can be declared (#44)
+            if func.external || func.name == "main" {
+                // a function of another file is declared without 외부: 외부 is for the libc
                 if !func.name.is_ascii() {
                     let kind = ConvertErrorKind::ExternNotLatin(func.name.clone());
                     return Err(ConvertError::new(kind, func.span));
@@ -41,7 +41,7 @@ impl<'a> Converter<'a> {
         &mut self,
         func: &'a Function,
     ) -> Result<ir::structs::Function, ConvertError> {
-        // `외부`: nothing to check
+        // `외부` and a function of another file: nothing to check
 
         let mut ir_func = ir::structs::Function::new(
             func.mangled_name.clone(),
@@ -76,7 +76,7 @@ impl<'a> Converter<'a> {
         Ok(ir_func)
     }
 
-    /// The program has a `main` that returns a 정수
+    /// The program has a `main` that returns a 정수 (in one of its files, when it has several)
     pub(super) fn check_main(&self) -> Result<(), ConvertError> {
         let Some(main) = self
             .program
@@ -84,6 +84,10 @@ impl<'a> Converter<'a> {
             .iter()
             .find(|func| func.name == "main")
         else {
+            // shortcut: in several files, gcc reports a missing or a second main at link time
+            if !self.needs_main {
+                return Ok(());
+            }
             return Err(ConvertError::new(ConvertErrorKind::NoMain, Span::new(0, 0)));
         };
         if !matches!(main.return_type, Some(Type::Int { .. })) {

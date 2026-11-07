@@ -304,7 +304,7 @@ fn takes_args(func: &Function, types: &[Type], values: &[Option<&Expr>]) -> bool
 
 /// Whether the symbol of `func` has the types of its parameters: neither `외부` nor `main`
 fn is_mangled(func: &Function) -> bool {
-    func.body.is_some() && func.name != "main"
+    !func.external && func.name != "main"
 }
 
 /// `op` cannot take operands of `types`
