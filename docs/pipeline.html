@@ -1,0 +1,334 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pipeline de Krc</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<style>
+/* Layout: one reading column; each stage is a numbered row, text on the left, the real output of the example on the right */
+:root {
+  --bg: #f4f7f6;
+  --surface: #ffffff;
+  --ink: #16242a;
+  --muted: #56686e;
+  --line: #d4dedb;
+  --accent: #2c7a6a;
+  --accent-soft: #dcefe9;
+  --warn: #a8502a;
+  --warn-soft: #f7e5db;
+  --font-display: "Gowun Batang", "Noto Serif KR", Georgia, serif;
+  --font-body: "IBM Plex Sans KR", "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "Nanum Gothic Coding", "D2Coding", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1719; --surface: #152125; --ink: #e2ebe8; --muted: #95a7a8; --line: #26373b;
+    --accent: #6cc2ad; --accent-soft: #1b3530; --warn: #e48b60; --warn-soft: #3a2319;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1719; --surface: #152125; --ink: #e2ebe8; --muted: #95a7a8; --line: #26373b;
+  --accent: #6cc2ad; --accent-soft: #1b3530; --warn: #e48b60; --warn-soft: #3a2319;
+  color-scheme: dark;
+}
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+.page {
+  max-width: 60rem;
+  margin: 0 auto;
+  padding-block: 2.5rem 3rem;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid;
+  gap: 2.5rem;
+}
+h1, h2 { font-family: var(--font-display); font-weight: 700; text-wrap: balance; margin: 0; }
+h1 { font-size: clamp(2rem, 5vw, 2.75rem); line-height: 1.15; }
+h2 { font-size: 1.4rem; line-height: 1.25; }
+p { margin: 0; max-width: 65ch; }
+code, pre { font-family: var(--font-mono); font-size: 0.875rem; }
+p code, li code { background: var(--accent-soft); padding: 0.05em 0.35em; border-radius: 4px; }
+.eyebrow { font-size: 0.75rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+
+header { display: grid; gap: 1rem; }
+header .lede { color: var(--muted); font-size: 1.05rem; }
+
+.example { display: grid; gap: 0.5rem; }
+pre {
+  margin: 0;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.85rem 1rem;
+  overflow-x: auto;
+  line-height: 1.55;
+}
+pre .hl { background: var(--accent-soft); color: var(--accent); font-weight: 700; border-radius: 3px; }
+
+.flow { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; list-style: none; margin: 0; padding: 0; }
+.flow li { display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; }
+.flow a {
+  color: var(--ink); text-decoration: none; border: 1px solid var(--line); background: var(--surface);
+  border-radius: 999px; padding: 0.25rem 0.75rem; font-weight: 500;
+}
+.flow a:hover, .flow a:focus-visible { border-color: var(--accent); color: var(--accent); outline: none; }
+.flow li + li::before { content: "→"; color: var(--muted); }
+.flow .fragile a { border-color: var(--warn); color: var(--warn); }
+
+.stages { display: grid; gap: 0; border-top: 1px solid var(--line); }
+.stage {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1.25rem;
+  padding-block: 1.75rem;
+  border-bottom: 1px solid var(--line);
+  scroll-margin-top: 1rem;
+}
+.num {
+  font-family: var(--font-display); font-size: 1.6rem; color: var(--accent); line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.stage.fragile .num { color: var(--warn); }
+.body { display: grid; gap: 0.75rem; align-content: start; min-width: 0; }
+.where { font-family: var(--font-mono); font-size: 0.8rem; color: var(--muted); }
+.io { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; font-size: 0.85rem; }
+.io span { border: 1px solid var(--line); border-radius: 6px; padding: 0.1rem 0.5rem; background: var(--surface); }
+.io b { color: var(--muted); font-weight: 400; }
+ul { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.3rem; max-width: 65ch; }
+.errors { font-size: 0.85rem; color: var(--muted); }
+.errors strong { color: var(--ink); font-weight: 600; }
+.out { display: grid; gap: 0.4rem; align-content: start; min-width: 0; }
+.out .eyebrow { font-size: 0.7rem; }
+
+.callout {
+  border: 1px solid var(--warn);
+  background: var(--warn-soft);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  display: grid; gap: 0.35rem;
+  font-size: 0.9rem;
+}
+.callout .eyebrow { color: var(--warn); }
+
+footer { color: var(--muted); font-size: 0.8rem; display: grid; gap: 0.3rem; }
+
+@media (max-width: 760px) {
+  .stage { grid-template-columns: 2rem minmax(0, 1fr); }
+  .out { grid-column: 2; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  html { scroll-behavior: smooth; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <span class="eyebrow">Krc · compilateur d'un langage en coréen</span>
+    <h1>Du fichier <code>.kr</code> au fichier objet, en sept étapes</h1>
+    <p class="lede">Chaque fichier passe par <code>compile</code> (<code>src/main.rs</code>). Chaque étape prend la sortie de la précédente. L'exemple ci-dessous est suivi d'étape en étape avec la vraie sortie du compilateur.</p>
+    <div class="example">
+      <span class="eyebrow">Exemple suivi : demo.kr</span>
+<pre>정수를 반환하는 더하다(정수 가, 정수 나) {
+    (가 + 나)를 반환해요.
+}
+
+정수를 반환하는 main() {
+    <span class="hl">합은 3과 4를 더한 값이에요.</span>
+    합을 반환해요.
+}</pre>
+    </div>
+    <ol class="flow" aria-label="Étapes du compilateur">
+      <li><a href="#lexer">Lexer</a></li>
+      <li class="fragile"><a href="#preparser">Pre-parser</a></li>
+      <li><a href="#parser">Parser LR(1)</a></li>
+      <li><a href="#postparser">Post-parser</a></li>
+      <li><a href="#converter">Converter</a></li>
+      <li><a href="#codegen">Codegen</a></li>
+      <li><a href="#elf">Encodeur et ELF</a></li>
+    </ol>
+  </header>
+
+  <section class="stages" aria-label="Étapes">
+    <article class="stage" id="lexer">
+      <span class="num">1</span>
+      <div class="body">
+        <h2>Lexer</h2>
+        <span class="where">src/lexer/ · tokenize</span>
+        <div class="io"><span>texte source</span><b>→</b><span>LexerToken + Span</span></div>
+        <ul>
+          <li>Découpe en <code>HangulWord</code>, <code>LatinWord</code>, <code>Int</code>, <code>Float</code>, <code>Str</code>, <code>Punctuation</code>, <code>Operator</code>, <code>Eof</code>. Saute les commentaires.</li>
+          <li>Les positions (<code>Span</code>) sont en octets.</li>
+          <li>Ne connaît ni mot-clé ni particule : <code>합은</code> reste un seul mot.</li>
+        </ul>
+        <p class="errors"><strong>Erreurs :</strong> chaîne ou commentaire non terminé, jamo isolé, caractère inattendu, entier trop grand.</p>
+      </div>
+      <div class="out">
+        <span class="eyebrow">La ligne suivie</span>
+<pre>HangulWord(합은) Int(3) HangulWord(과)
+Int(4) HangulWord(를) HangulWord(더한)
+HangulWord(값이에요) Punctuation(.)</pre>
+      </div>
+    </article>
+
+    <article class="stage fragile" id="preparser">
+      <span class="num">2</span>
+      <div class="body">
+        <h2>Pre-parser</h2>
+        <span class="where">src/parser/preparser/ · pre_parse</span>
+        <div class="io"><span>LexerToken</span><b>→</b><span>ParserToken + warnings</span></div>
+        <ul>
+          <li>Classe et découpe les mots coréens : mot-clé, type, booléen, compteur, forme verbale, particule.</li>
+          <li><code>declared_verbs</code> : l'infinitif de chaque verbe du fichier, pour qu'un appel placé avant la définition soit lu comme un verbe.</li>
+          <li><code>declared_names</code> : les noms déclarés (<code>결과는</code>, paramètres), avec leur scope.</li>
+          <li><code>tokenize_names</code> : un mot devient <code>Name</code>, ou <code>Name</code> + particule. Le nom le plus long gagne.</li>
+        </ul>
+        <p class="errors"><strong>Erreurs :</strong> <code>UnknownIdentifier</code>, <code>AmbiguousName</code>. Warning : verbe sans <code>(</code>.</p>
+        <div class="callout">
+          <span class="eyebrow">Point fragile</span>
+          <p>Le découpage dépend des déclarations, comme les <code>typedef</code> du C. Les déclarations sont devinées par des heuristiques sur une suite plate de tokens. Les issues #17, #18, #21 et #47 touchent cette étape.</p>
+        </div>
+      </div>
+      <div class="out">
+        <span class="eyebrow">La ligne suivie</span>
+<pre>Name(합) Particle(Topic)
+Int(3) Particle(With)
+Int(4) Particle(Object)
+Verb { 더하다, Adnominal }
+Keyword(Value) Particle(ItIs) Dot</pre>
+      </div>
+    </article>
+
+    <article class="stage" id="parser">
+      <span class="num">3</span>
+      <div class="body">
+        <h2>Parser LR(1)</h2>
+        <span class="where">src/parser/cfg/ · Parser::new(RULES), parse</span>
+        <div class="io"><span>ParserToken</span><b>→</b><span>arbre de dérivation (TreeNode)</span></div>
+        <ul>
+          <li>La grammaire est dans <code>rules.rs</code>. La table LR(1) est construite au démarrage, avec les ensembles FIRST (environ 4 s en debug, 0,5 s en release).</li>
+          <li>Ne regarde que la sorte du token (<code>Name</code>, <code>Verb::Seo</code>…), jamais sa valeur.</li>
+          <li>La terminaison des verbes (<code>Da</code>, <code>Seo</code>, <code>Yo</code>, <code>Adnominal</code>, <code>Go</code>) structure la phrase : 11 règles en dépendent.</li>
+        </ul>
+        <p class="errors"><strong>Erreur :</strong> <code>syntax error: unexpected &lt;token&gt;</code>. L'option <code>--tree</code> affiche l'arbre.</p>
+      </div>
+      <div class="out">
+        <span class="eyebrow">Règle qui reconnaît « 3과 4를 더한 값 »</span>
+<pre>DeclarationValue =&gt;
+    Arguments
+    Verb::Adnominal
+    Keyword::Value</pre>
+      </div>
+    </article>
+
+    <article class="stage" id="postparser">
+      <span class="num">4</span>
+      <div class="body">
+        <h2>Post-parser</h2>
+        <span class="where">src/parser/postparser/ · convert_to_ast_tree</span>
+        <div class="io"><span>arbre de dérivation</span><b>→</b><span>AST (Program, Function, Statement, Expr)</span></div>
+        <ul>
+          <li>Une fonction par non-terminal.</li>
+          <li>Refuse ce que la grammaire accepte mais que l'AST ne peut pas représenter : <code>부호 없는 소수</code>, <code>짧은 논리</code>, <code>반환해요</code> sans valeur ou avec deux valeurs, compteur incohérent (<code>두 정수 가와 나와 다를</code>).</li>
+          <li>Affiche l'AST sur stdout.</li>
+        </ul>
+      </div>
+      <div class="out">
+        <span class="eyebrow">AST affiché</span>
+<pre>fn main() -&gt; int {
+    let 합 = 더하다(3, 4)
+    return 합
+}</pre>
+      </div>
+    </article>
+
+    <article class="stage" id="converter">
+      <span class="num">5</span>
+      <div class="body">
+        <h2>Converter</h2>
+        <span class="where">src/converter/ · Converter::convert</span>
+        <div class="io"><span>AST</span><b>→</b><span>IR</span></div>
+        <ul>
+          <li>L'analyse sémantique : scopes, types, expressions, instructions, signatures.</li>
+          <li>Noms de fonction décorés par les types des paramètres (<code>더하다$int$int</code>). Une fonction <code>외부</code> a un nom latin.</li>
+          <li>IR : variables numérotées et instructions <code>Copy</code>, <code>Unary</code>, <code>Binary</code>, <code>Cast</code>, <code>Zero</code>, <code>Call</code>, <code>Label</code>, <code>Jump</code>, <code>JumpIfNot</code>, <code>Return</code>.</li>
+        </ul>
+        <p class="errors"><strong>Erreurs :</strong> <code>UnknownVariable</code>, <code>AlreadyDeclared</code>, <code>SameSignature</code>, <code>MissingReturn</code>, <code>NoMain</code>, <code>NotInteger</code>, <code>BreakOutOfLoop</code>…</p>
+      </div>
+      <div class="out">
+        <span class="eyebrow">IR affichée</span>
+<pre>fn main() -&gt; int
+    var v0: int
+    var v1: int
+    // let 합 = 더하다(3, 4)
+    v0 = call 더하다$int$int(3ls, 4ls)
+    v1 = v0
+    // return 합
+    return v1</pre>
+      </div>
+    </article>
+
+    <article class="stage" id="codegen">
+      <span class="num">6</span>
+      <div class="body">
+        <h2>Codegen</h2>
+        <span class="where">src/codegen/ · generate</span>
+        <div class="io"><span>IR</span><b>→</b><span>instructions x86-64 + sections</span></div>
+        <ul>
+          <li>Chaque variable a sa case sur la pile. Pas encore d'allocation de registres (#8).</li>
+          <li>Pour chaque fonction : prologue, traduction de chaque instruction IR, épilogue.</li>
+          <li>Les chaînes vont dans <code>.rodata</code>, les fonctions dans <code>.text</code>. Une fonction <code>외부</code> devient un symbole non défini.</li>
+        </ul>
+      </div>
+      <div class="out">
+        <span class="eyebrow">main désassemblé (extrait)</span>
+<pre>push rbp
+mov  rbp, rsp
+sub  rsp, 0x10
+mov  rdi, 0x3
+mov  rsi, 0x4
+call 더하다$int$int
+mov  [rbp-0x8], rax
+...
+ret</pre>
+      </div>
+    </article>
+
+    <article class="stage" id="elf">
+      <span class="num">7</span>
+      <div class="body">
+        <h2>Encodeur x86-64 et ELF</h2>
+        <span class="where">src/elf/instructions/ · src/elf/file/</span>
+        <div class="io"><span>instructions</span><b>→</b><span>demo.o</span><b>→</b><span>a.out (avec -x)</span></div>
+        <ul>
+          <li>Un assembleur maison : préfixes, REX, ModRM, SIB, déplacements et relocations.</li>
+          <li>Un écrivain ELF maison : sections, table des chaînes, symboles, relocations. Ni <code>as</code> ni <code>nasm</code>.</li>
+          <li>Avec plusieurs fichiers, un seul contient <code>main</code>. L'option <code>-x</code> appelle <code>gcc</code> pour lier, ce qui apporte la libc (<code>printf</code>).</li>
+        </ul>
+      </div>
+      <div class="out">
+        <span class="eyebrow">Octets encodés (début de main)</span>
+<pre>48 55          push rbp
+48 8b ec       mov rbp, rsp
+48 83 ec 10    sub rsp, 0x10
+e8 00 00 00 00 call (relocation)</pre>
+      </div>
+    </article>
+  </section>
+
+  <footer>
+    <p>Sorties obtenues le 8 novembre 2026 avec le compilateur en release sur demo.kr. Les tokens des étapes 1 et 2 sont reconstitués à partir du code et des tests du lexer et du pre-parser.</p>
+  </footer>
+</div>
+</body>
+</html>
