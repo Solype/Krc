@@ -7,6 +7,8 @@ use crate::lexer::span::Span;
 pub enum PreParseErrorKind {
     /// A Hangul word that is no keyword, type, verb or declared name, even cut before a particle
     UnknownIdentifier(String),
+    /// A declared name that is another name of the same scope followed by a particle: 사 and 사과
+    AmbiguousName(String),
 }
 
 /// A pre-parsing error and where it happened
@@ -27,6 +29,9 @@ impl fmt::Display for PreParseErrorKind {
         match self {
             Self::UnknownIdentifier(word) => {
                 write!(f, "'{word}' is no keyword, type, verb or declared name")
+            }
+            Self::AmbiguousName(name) => {
+                write!(f, "'{name}' can be read as another declared name followed by a particle")
             }
         }
     }

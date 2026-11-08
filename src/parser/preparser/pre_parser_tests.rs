@@ -130,8 +130,10 @@ fn pre_err(src: &str) -> PreParseError {
 
 /// The first word of `src` that is no keyword, type, verb or declared name
 fn unknown(src: &str) -> String {
-    let PreParseErrorKind::UnknownIdentifier(word) = pre_err(src).kind;
-    word
+    match pre_err(src).kind {
+        PreParseErrorKind::UnknownIdentifier(word) => word,
+        kind => panic!("{src:?}: {kind:?}, not an unknown identifier"),
+    }
 }
 
 #[test]
