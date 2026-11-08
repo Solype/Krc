@@ -302,6 +302,17 @@ impl<'a> PreParser<'a> {
             .any(|token| matches!(&token.kind, LexerTokenKind::HangulWord(word) if word == "반환"))
     }
 
+    fn cutted_name<'w>(word: &'w str, names: &HashSet<&str>) -> Option<(&'w str, Particle)> {
+        return word
+            .char_indices()
+            .rev()
+            .filter(|(cut, _)| *cut > 0)
+            .map(|(cut, _)| word.split_at(cut))
+            .find_map(|(name, rest)| {
+                let particle = is_name_particle(rest)?;
+                names.contains(name).then_some((name, particle))
+            });
+    }
     /// Replaces every `Ident` left that is a declared name, alone or followed by a particle a name
     /// can carry: 나 → Name(나), 나를 → Name(나) + Particle(Object). When several names fit, the
     /// longest wins (가나를 → 가나 + 를, not 가 + 나를); any other `Ident` stays
@@ -321,15 +332,7 @@ impl<'a> PreParser<'a> {
                 continue;
             }
             // from the longest name down: 가나를 tries 가나 before 가
-            let split = word
-                .char_indices()
-                .rev()
-                .filter(|(cut, _)| *cut > 0)
-                .map(|(cut, _)| word.split_at(cut))
-                .find_map(|(name, rest)| {
-                    let particle = is_name_particle(rest)?;
-                    names.contains(name).then_some((name, particle))
-                });
+            let split = Self::cutted_name(word, &names);
             match split {
                 Some((name, particle)) => out.extend(Self::split_name(name, particle, token.span)),
                 None => out.push(token),
