@@ -1,0 +1,10 @@
+// #47: a name ending in 다 alone in a condition.
+// `echo $?` prints 1 after the run.
+
+정수를 반환하는 main() {
+    바다는 3이에요.
+    만약 바다 > 2이면 {
+        1을 반환해요.
+    }
+    0을 반환해요.
+}
