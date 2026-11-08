@@ -533,6 +533,63 @@ fn undeclared_word_is_an_error() {
     assert_eq!(err.span, Span::new(22, 31));
 }
 
+/// The name of `src` that is another name of its scope followed by a particle
+fn ambiguous(src: &str) -> String {
+    match pre_err(src).kind {
+        PreParseErrorKind::AmbiguousName(name) => name,
+        kind => panic!("{src:?}: {kind:?}, not an ambiguous name"),
+    }
+}
+
+#[test]
+fn name_that_is_another_name_and_a_particle_is_an_error() {
+    let err = pre_err("사는 1이에요. 사과는 2예요.");
+    assert_eq!(
+        err.kind,
+        PreParseErrorKind::AmbiguousName("사과".to_string())
+    );
+    // the whole declaring word: 사과는 at bytes 19..28
+    assert_eq!(err.span, Span::new(19, 28));
+    // the other way around, 사 is the one that conflicts
+    assert_eq!(ambiguous("사과는 2예요. 사는 1이에요."), "사");
+}
+
+#[test]
+fn ambiguous_parameters_are_errors() {
+    assert_eq!(ambiguous("고치다(정수 사, 정수 사과) { }"), "사과");
+    assert_eq!(ambiguous("고치다(정수 사) { 사과는 2예요. }"), "사과");
+    assert_eq!(ambiguous("정수 사와 정수 사과를 받아 고치고 { }"), "사과");
+}
+
+#[test]
+fn a_global_conflicts_with_the_names_of_a_function() {
+    assert_eq!(ambiguous("사는 1이에요. main() { 사과는 2예요. }"), "사과");
+}
+
+#[test]
+fn two_functions_are_two_scopes() {
+    assert_names(
+        "고치다(정수 사) { } main() { 사과는 2예요. }",
+        &["사", "사과"],
+    );
+    // a header without a body (외부) keeps its parameters to itself
+    assert_names(
+        "외부 정수를 반환하는 abs(정수 사) main() { 사과는 2예요. }",
+        &["사", "사과"],
+    );
+}
+
+#[test]
+fn a_rest_that_is_no_name_particle_is_no_conflict() {
+    // 득 is no particle, 로 and 의 only follow a type, 과일 only starts with one
+    assert_names("가는 1이에요. 가득은 2예요.", &["가", "가득"]);
+    assert_names(
+        "사는 1이에요. 사로는 2예요. 사의는 3이에요. 사과일은 4예요.",
+        &["사", "사로", "사의", "사과일"],
+    );
+    assert_names("고치다(정수 가, 정수 가득) { }", &["가", "가득"]);
+}
+
 #[test]
 fn no_identifier_left_in_the_prototype() {
     let tokens = pre(include_str!("../../../Proto.kr"));

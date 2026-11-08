@@ -31,7 +31,10 @@ impl fmt::Display for PreParseErrorKind {
                 write!(f, "'{word}' is no keyword, type, verb or declared name")
             }
             Self::AmbiguousName(name) => {
-                write!(f, "'{name}' can be read as another declared name followed by a particle")
+                write!(
+                    f,
+                    "'{name}' can be read as another declared name followed by a particle"
+                )
             }
         }
     }

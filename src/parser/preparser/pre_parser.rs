@@ -409,6 +409,12 @@ impl<'a> PreParser<'a> {
                 ))
             );
             if after_a_type && before_comma_or_paren {
+                if Self::is_word_ambiguous(&scope, word) {
+                    return Err(PreParseError::new(
+                        PreParseErrorKind::AmbiguousName(word.to_string()),
+                        token.span,
+                    ));
+                }
                 names.push(word.clone());
                 scope.push(word.clone());
                 continue;
