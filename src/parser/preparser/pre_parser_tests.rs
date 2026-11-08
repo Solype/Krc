@@ -282,12 +282,19 @@ fn never_declared_is_not_a_verb() {
 }
 
 #[test]
-fn every_word_ending_in_da_is_a_verb() {
-    // wherever it is, with or without parentheses: 다 marks the functions
-    assert_eq!(pre("바다"), [verb("바다", Ending::Da)]);
-    assert_eq!(pre("main() { 바다 }")[4], verb("바다", Ending::Da));
-    // and its forms are verbs too
-    assert_eq!(pre("만들다 만든")[1], verb("만들다", Ending::Adnominal));
+fn a_word_ending_in_da_is_a_verb_where_it_is_declared() {
+    // 다 marks the functions where `(` or `{` follows
+    assert_eq!(pre("바다() { }")[0], verb("바다", Ending::Da));
+    assert_eq!(pre("제곱하다 { }")[0], verb("제곱하다", Ending::Da));
+    // and its forms are verbs too, even before the declaration
+    assert_eq!(
+        pre("만든 만들다() { }")[0],
+        verb("만들다", Ending::Adnominal)
+    );
+    // elsewhere it is a name, or an unknown word
+    let tokens = pre("main() { 바다는 1이에요. 바다 }");
+    assert_eq!(tokens[tokens.len() - 2], name("바다"));
+    assert_eq!(unknown("바다"), "바다");
 }
 
 fn warnings(src: &str) -> Vec<PreParseWarningKind> {

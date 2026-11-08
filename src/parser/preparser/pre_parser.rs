@@ -270,8 +270,9 @@ impl<'a> PreParser<'a> {
     }
 
     /// First pass: the infinitive of every verb of the file, so that a call before the
-    /// definition is a verb too. 다 marks the functions: any Hangul word ending in 다 is a verb in
-    /// its dictionary form. A sentence declaration gives its verb in -고, right after 받아 or with
+    /// definition is a verb too. 다 marks the functions: a Hangul word ending in 다 declares a verb
+    /// only where `(` or `{` follows it (`더하다(…)`, `제곱하다 { }`); elsewhere it is a name (바다).
+    /// A sentence declaration gives its verb in -고, right after 받아 or with
     /// `반환` after it and before the `{`: `받아 비교하고`, `인사하고 정수를 반환` → 비교하다, 인사하다
     fn declared_verbs(tokens: &[LexerToken]) -> impl Iterator<Item = String> {
         tokens.iter().enumerate().filter_map(|(i, token)| {
@@ -279,7 +280,13 @@ impl<'a> PreParser<'a> {
                 return None;
             };
             if word.ends_with('다') {
-                return Some(word.to_string());
+                let declares = matches!(
+                    tokens.get(i + 1).map(|next| &next.kind),
+                    Some(LexerTokenKind::Punctuation(
+                        Punctuation::LParen | Punctuation::LBrace
+                    ))
+                );
+                return declares.then(|| word.to_string());
             }
             let stem = word.strip_suffix('고')?;
             let after_receiving = i > 0

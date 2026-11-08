@@ -5,8 +5,7 @@ use crate::lexer::span::Span;
 /// Something suspicious the pre-parser accepts anyway
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PreParseWarningKind {
-    /// A word in 다 is a verb, but neither `(` nor `{` follows it: probably a name ending in 다
-    /// (바다)
+    /// A declared verb in its dictionary form, but neither `(` nor `{` follows it: `바다() { } 바다`
     VerbWithoutParentheses(String),
 }
 
@@ -28,8 +27,7 @@ impl fmt::Display for PreParseWarningKind {
         match self {
             Self::VerbWithoutParentheses(word) => write!(
                 f,
-                "'{word}' ends in 다, so it is a function, but no '(' or '{{' follows: \
-                 a name cannot end in 다"
+                "'{word}' is a declared function, but no '(' or '{{' follows"
             ),
         }
     }
