@@ -1,0 +1,8 @@
+// #47: a name ending in 다, alone next to an operator, is a name, not a verb.
+// `echo $?` prints 10 after the run.
+
+정수를 반환하는 main() {
+    사이다는 10이에요.
+    차는 (사이다 + 0)이에요.
+    차를 반환해요.
+}
