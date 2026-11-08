@@ -303,15 +303,14 @@ impl<'a> PreParser<'a> {
     }
 
     fn cutted_name<'w>(word: &'w str, names: &HashSet<&str>) -> Option<(&'w str, Particle)> {
-        return word
-            .char_indices()
+        word.char_indices()
             .rev()
             .filter(|(cut, _)| *cut > 0)
             .map(|(cut, _)| word.split_at(cut))
             .find_map(|(name, rest)| {
                 let particle = is_name_particle(rest)?;
                 names.contains(name).then_some((name, particle))
-            });
+            })
     }
     /// Replaces every `Ident` left that is a declared name, alone or followed by a particle a name
     /// can carry: 나 → Name(나), 나를 → Name(나) + Particle(Object). When several names fit, the
@@ -352,13 +351,10 @@ impl<'a> PreParser<'a> {
                 to_test.strip_prefix(name)
             };
 
-            match suffix {
-                Some(s) => {
-                    if is_name_particle(s).is_some() {
-                        return true;
-                    }
-                }
-                None => {}
+            if let Some(s) = suffix
+                && is_name_particle(s).is_some()
+            {
+                return true;
             }
         }
         false
