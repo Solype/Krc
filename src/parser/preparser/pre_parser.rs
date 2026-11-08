@@ -187,7 +187,7 @@ impl<'a> PreParser<'a> {
             // the last lexer token read: 없는 after a merged 부호 없는
             prev = Some(&self.tokens[self.pos - 1].kind);
         }
-        let names = Self::declared_names(&tokens);
+        let names = Self::declared_names(&tokens)?;
         for (i, replacement) in names.splits.into_iter().rev() {
             tokens.splice(i..=i, replacement);
         }
@@ -302,6 +302,16 @@ impl<'a> PreParser<'a> {
             .any(|token| matches!(&token.kind, LexerTokenKind::HangulWord(word) if word == "반환"))
     }
 
+    fn cutted_name<'w>(word: &'w str, names: &HashSet<&str>) -> Option<(&'w str, Particle)> {
+        word.char_indices()
+            .rev()
+            .filter(|(cut, _)| *cut > 0)
+            .map(|(cut, _)| word.split_at(cut))
+            .find_map(|(name, rest)| {
+                let particle = is_name_particle(rest)?;
+                names.contains(name).then_some((name, particle))
+            })
+    }
     /// Replaces every `Ident` left that is a declared name, alone or followed by a particle a name
     /// can carry: 나 → Name(나), 나를 → Name(나) + Particle(Object). When several names fit, the
     /// longest wins (가나를 → 가나 + 를, not 가 + 나를); any other `Ident` stays
@@ -321,15 +331,7 @@ impl<'a> PreParser<'a> {
                 continue;
             }
             // from the longest name down: 가나를 tries 가나 before 가
-            let split = word
-                .char_indices()
-                .rev()
-                .filter(|(cut, _)| *cut > 0)
-                .map(|(cut, _)| word.split_at(cut))
-                .find_map(|(name, rest)| {
-                    let particle = is_name_particle(rest)?;
-                    names.contains(name).then_some((name, particle))
-                });
+            let split = Self::cutted_name(word, &names);
             match split {
                 Some((name, particle)) => out.extend(Self::split_name(name, particle, token.span)),
                 None => out.push(token),
@@ -338,15 +340,58 @@ impl<'a> PreParser<'a> {
         out
     }
 
+    fn is_word_ambiguous(names: &Vec<String>, to_test: &str) -> bool {
+        for name in names {
+            if !name.starts_with(to_test) && !to_test.starts_with(name) {
+                continue;
+            }
+            let suffix = if name.len() > to_test.len() {
+                name.strip_prefix(to_test)
+            } else {
+                to_test.strip_prefix(name)
+            };
+
+            if let Some(s) = suffix
+                && is_name_particle(s).is_some()
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     /// Every declared variable and parameter name, from the pre-parsed tokens (names still `Ident`)
-    fn declared_names(tokens: &[ParserToken]) -> DeclaredNames {
+    fn declared_names(tokens: &[ParserToken]) -> Result<DeclaredNames, PreParseError> {
         let mut names = Vec::new();
         let mut splits = BTreeMap::new();
         // `두 정수 가와 나를`: after a parameter with 와, the next name may come without its type
         let mut untyped_next = false;
+        // the names a new one can conflict with: the globals, then those of the current function
+        let mut scope: Vec<String> = Vec::new();
+        // scope[..globals] are declared outside any function, and stay when one ends
+        let mut globals = 0;
+        let mut depth = 0usize;
         for (i, token) in tokens.iter().enumerate() {
-            let ParserTokenKind::Ident(word) = &token.kind else {
-                continue;
+            let word = match &token.kind {
+                ParserTokenKind::Ident(word) => word,
+                ParserTokenKind::Punctuation(Punctuation::LBrace) => {
+                    depth += 1;
+                    continue;
+                }
+                // a new header at depth 0: the parameters of a header without a body (외부) go
+                ParserTokenKind::Punctuation(Punctuation::LParen) if depth == 0 => {
+                    scope.truncate(globals);
+                    continue;
+                }
+                ParserTokenKind::Punctuation(Punctuation::RBrace) => {
+                    depth = depth.saturating_sub(1);
+                    // a function ends: its parameters and variables go, the globals stay
+                    if depth == 0 {
+                        scope.truncate(globals);
+                    }
+                    continue;
+                }
+                _ => continue,
             };
             let prev = i.checked_sub(1).map(|p| &tokens[p].kind);
             let next = tokens.get(i + 1).map(|t| &t.kind);
@@ -360,7 +405,14 @@ impl<'a> PreParser<'a> {
                 ))
             );
             if after_a_type && before_comma_or_paren {
+                if Self::is_word_ambiguous(&scope, word) {
+                    return Err(PreParseError::new(
+                        PreParseErrorKind::AmbiguousName(word.to_string()),
+                        token.span,
+                    ));
+                }
                 names.push(word.clone());
+                scope.push(word.clone());
                 continue;
             }
 
@@ -378,12 +430,23 @@ impl<'a> PreParser<'a> {
                 _ => false,
             };
             if declares && !name.is_empty() {
+                if Self::is_word_ambiguous(&scope, name) {
+                    return Err(PreParseError::new(
+                        PreParseErrorKind::AmbiguousName(name.to_string()),
+                        token.span,
+                    ));
+                }
                 names.push(name.to_string());
+                scope.push(name.to_string());
+                // a variable outside any function is global; a parameter at depth 0 is not
+                if depth == 0 && particle == Particle::Topic {
+                    globals = scope.len();
+                }
                 splits.insert(i, Self::split_name(name, particle, token.span));
                 untyped_next = particle == Particle::With;
             }
         }
-        DeclaredNames { names, splits }
+        Ok(DeclaredNames { names, splits })
     }
 
     /// A declaring word cut after its name, each part with its own span
