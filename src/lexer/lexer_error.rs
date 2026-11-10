@@ -15,7 +15,7 @@ pub enum LexErrorKind {
     InvalidEscape(char),
     /// An integer literal above `i64::MAX`
     IntegerOverflow,
-    /// `=` alone: there is no assignment operator, it is written 넣어요
+    /// `=` alone: there is no assignment operator, it is written `가는 1이에요`
     LoneEquals,
     /// `!` alone: there is no negation operator, it is written 아니면
     LoneBang,
@@ -54,7 +54,7 @@ impl fmt::Display for LexErrorKind {
             Self::IntegerOverflow => write!(f, "integer too large (maximum {})", i64::MAX),
             Self::LoneEquals => write!(
                 f,
-                "'=' alone does not exist: assignment is written 넣어요, equality =="
+                "'=' alone does not exist: assignment is written 가는 1이에요, equality =="
             ),
             Self::LoneBang => write!(
                 f,

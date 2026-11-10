@@ -3,7 +3,7 @@ use super::ir::structs::{Function as IrFunc, Instr as IrInstr, Operand as IrOper
 use super::scope::LoopLabels;
 use crate::lexer::span::Span;
 use crate::parser::postparser::structs::{
-    Argument, Assign, BinaryOp, Declare, Expr, ExprKind, For, Function, If, Init, Statement,
+    Argument, BinaryOp, Declare, Expr, ExprKind, For, Function, If, Init, Statement,
     StatementKind, Type, UnaryOp, While,
 };
 
@@ -420,7 +420,8 @@ impl<'a> Converter<'a> {
         Ok(instr)
     }
 
-    /// `결과는 0이에요.`: adds the variable to `scope`
+    /// `결과는 0이에요.`: adds the variable to `scope`; on a name already declared, without
+    /// `고정된`, gives that variable a new value
     fn convert_init(
         &mut self,
         scope: &mut Scope,
@@ -428,6 +429,9 @@ impl<'a> Converter<'a> {
         span: Span,
         ir_func: &mut IrFunc,
     ) -> Result<Vec<IrInstr>, ConvertError> {
+        if !init.constant && scope.find_variable(&init.name).is_some() {
+            return self.convert_assign(scope, &init.name, &init.value, span, ir_func);
+        }
         let ty = match self.get_type(&init.value, scope)? {
             // `없음은 빈 주소예요.`: an address to nothing, the void* of C
             Type::Null => Type::Address(Box::new(Type::Null)),
@@ -448,35 +452,33 @@ impl<'a> Converter<'a> {
         Ok(instrs)
     }
 
-    /// `… 결과에 넣어요.`
+    /// `결과는 (결과 + 1)이에요.` on `target`, a variable of `scope`
     fn convert_assign(
         &mut self,
         scope: &Scope,
-        assign: &'a Assign,
+        target: &str,
+        value: &Expr,
         span: Span,
         ir_func: &mut IrFunc,
     ) -> Result<Vec<IrInstr>, ConvertError> {
-        // check if the variable exists
-        let Some(var) = scope.find_variable(&assign.target) else {
-            let kind = ConvertErrorKind::UnknownVariable(assign.target.clone());
-            return Err(ConvertError::new(kind, span));
-        };
-        // check if the var is const
+        let var = scope
+            .find_variable(target)
+            .expect("convert_init reassigns only a declared variable");
         if var.constant {
-            let kind = ConvertErrorKind::AssignToConstant(assign.target.clone());
+            let kind = ConvertErrorKind::AssignToConstant(target.to_string());
             return Err(ConvertError::new(kind, span));
         }
 
         let mut instrs: Vec<IrInstr> = vec![];
-        let src = self.convert_expr(&assign.value, scope, ir_func, &mut instrs)?;
-        let assign_value_ty = self.get_type(&assign.value, scope)?;
+        let src = self.convert_expr(value, scope, ir_func, &mut instrs)?;
+        let assign_value_ty = self.get_type(value, scope)?;
 
-        if !fits(&assign.value, &assign_value_ty, &var.ty) {
-            if let Some(err) = range_error(&assign.value, &assign_value_ty, &var.ty) {
+        if !fits(value, &assign_value_ty, &var.ty) {
+            if let Some(err) = range_error(value, &assign_value_ty, &var.ty) {
                 return Err(err);
             }
             let kind = ConvertErrorKind::WrongAssignType {
-                name: assign.target.clone(),
+                name: target.to_string(),
                 expected: type_name(&var.ty),
                 found: type_name(&assign_value_ty),
             };
@@ -646,9 +648,6 @@ impl<'a> Converter<'a> {
                 StatementKind::Init(init) => {
                     self.convert_init(&mut new_scope, init, statement.span, ir_func)?
                 }
-                StatementKind::Assign(assign) => {
-                    self.convert_assign(&new_scope, assign, statement.span, ir_func)?
-                }
                 StatementKind::Return(value) => {
                     self.convert_return(&new_scope, value, statement.span, ir_func)?
                 }
@@ -686,7 +685,6 @@ fn source_line(statement: &Statement) -> String {
             "{} {name} = {value}",
             if *constant { "const" } else { "let" }
         ),
-        StatementKind::Assign(Assign { target, value }) => format!("{target} = {value}"),
         StatementKind::Return(value) => format!("return {value}"),
         StatementKind::Call(call) => call.to_string(),
         StatementKind::If(If { condition, .. }) => format!("if {condition}"),

@@ -13,9 +13,9 @@ Rust that produces x86-64 Linux ELF object files. Originally made for the Compil
 두 정수 가와 나를 받아 나누고 정수를 반환 {
     나머지는 정수예요.
     (나 == 0)이 아닌 동안 {
-        나머지에 (가 % 나)를 넣어요.
-        가에 나를 넣어요.
-        나에 나머지를 넣어요.
+        나머지는 (가 % 나)예요.
+        가는 나예요.
+        나는 나머지예요.
     }
     가를 반환해요.
 }

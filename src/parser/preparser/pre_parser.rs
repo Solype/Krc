@@ -466,7 +466,7 @@ impl<'a> PreParser<'a> {
     }
 
     /// Whether the word after `prev` starts a statement: first word, after `{`, `}`, `.`, 고정된,
-    /// or after a statement that ended in 요 (반환해요, 넣어요, 이에요…)
+    /// or after a statement that ended in 요 (반환해요, 더해요, 이에요…)
     fn starts_a_statement(prev: Option<&ParserTokenKind>) -> bool {
         matches!(
             prev,

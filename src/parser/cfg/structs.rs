@@ -46,10 +46,15 @@ pub enum NTerm {
     Statement,
     /// The `.` accepted after a final `요`
     OptionalDot,
-    /// `개수는 0이에요`, `고정된 합은 3과 4를 더한 값이에요`
+    /// `개수는 0이에요`, `고정된 합은 3과 4를 더한 값이에요`; also a reassignment when the name
+    /// is already declared
     VariableDeclaration,
-    /// What is before `이에요/예요`: a value, a type, or `… 더한 값`
+    /// What is before `이에요/예요`: a value, a type, or `… 더해서 제곱한 값`
     DeclarationValue,
+    /// The last step of a value, before `값`: `5를 곱한`, `제곱한`
+    ValueStep,
+    /// `곱한`, `제곱한`, `printf한`
+    AdnominalVerb,
     /// `3과 4를 더해서 5를 곱해서 반환해요`
     Chain,
     /// The `-아/어서` steps of a chain

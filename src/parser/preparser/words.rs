@@ -137,9 +137,9 @@ pub(super) fn is_name_particle(rest: &str) -> Option<Particle> {
         .map(|(_, particle)| *particle)
 }
 
-/// Built-in verbs used in several forms (넣어요, 넣어서); 반환하다 and 세다 only appear as the
+/// Built-in verbs used in several forms (바꿔서, 바꾼); 반환하다 and 세다 only appear as the
 /// keywords 반환해요 and 세면서
-pub(super) const BUILTIN_VERBS: &[&str] = &["넣다", "바꾸다", "하다"];
+pub(super) const BUILTIN_VERBS: &[&str] = &["바꾸다", "하다"];
 
 /// Every form of `infinitive` the pre-parser recognizes: 더하다 → 더하다, 더해서, 더해요, 더한,
 /// 더하고; None if it is not a verb (no final 다)

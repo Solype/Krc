@@ -9,7 +9,7 @@ use super::super::cfg::rules::RULES;
 use super::post_parse_error::PostParseErrorKind;
 use super::postparser::convert_to_ast_tree;
 use super::structs::{
-    Argument, Assign, Expr, ExprKind, If, Program, Statement, StatementKind, Type,
+    Argument, Expr, ExprKind, If, Init, Program, Statement, StatementKind, Type,
 };
 
 /// Building the table takes seconds in debug: once for all the tests
@@ -114,18 +114,46 @@ fn previous(call: &Expr) -> &Expr {
 
 #[test]
 fn call_spans_from_the_start_of_its_chain() {
-    let source = "외부 정수를 반환하는 더하다(정수 가, 정수 나)\n외부 정수를 반환하는 곱하다(정수 가, 정수 나)\n정수를 반환하는 main() {\n    결과는 0이에요.\n    3과 4를 더해서 5를 곱해서 결과에 넣어요.\n}\n";
+    let source = "외부 정수를 반환하는 더하다(정수 가, 정수 나)\n외부 정수를 반환하는 곱하다(정수 가, 정수 나)\n정수를 반환하는 main() {\n    결과는 0이에요.\n    결과는 3과 4를 더해서 5를 곱한 값이에요.\n}\n";
     let program = ast(source);
     let assign = &body(&program)[1];
     assert_eq!(
         text(source, assign.span),
-        "3과 4를 더해서 5를 곱해서 결과에 넣어요."
+        "결과는 3과 4를 더해서 5를 곱한 값이에요."
     );
-    let StatementKind::Assign(Assign { value, .. }) = &assign.kind else {
-        panic!("an assignment was expected");
+    let StatementKind::Init(Init { value, .. }) = &assign.kind else {
+        panic!("a value was expected");
     };
-    assert_eq!(text(source, value.span), "3과 4를 더해서 5를 곱해서");
+    assert_eq!(text(source, value.span), "3과 4를 더해서 5를 곱한");
     assert_eq!(text(source, previous(value).span), "3과 4를 더해서");
+}
+
+#[test]
+fn value_of_one_step_has_no_previous() {
+    let source = "외부 정수를 반환하는 더하다(정수 가, 정수 나)\n정수를 반환하는 main() {\n    결과는 3과 4를 더한 값이에요.\n    결과를 반환해요.\n}\n";
+    let program = ast(source);
+    let StatementKind::Init(Init { value, .. }) = &body(&program)[0].kind else {
+        panic!("a value was expected");
+    };
+    let ExprKind::Call { verb, args } = &value.kind else {
+        panic!("a call was expected");
+    };
+    assert_eq!(verb, "더하다");
+    assert_eq!(args.len(), 2);
+    assert!(!matches!(args[0], Argument::Previous(_)));
+}
+
+#[test]
+fn value_of_a_latin_function() {
+    let source = "외부 정수를 반환하는 printf(문자 주소 형식, …)\n정수를 반환하는 main() {\n    결과는 \"%ld\\n\"과 42를 printf한 값이에요.\n    결과를 반환해요.\n}\n";
+    let program = ast(source);
+    let StatementKind::Init(Init { value, .. }) = &body(&program)[0].kind else {
+        panic!("a value was expected");
+    };
+    let ExprKind::Call { verb, .. } = &value.kind else {
+        panic!("a call was expected");
+    };
+    assert_eq!(verb, "printf");
 }
 
 #[test]
@@ -205,21 +233,6 @@ fn give_without_value_is_an_error_on_the_chain() {
 fn give_without_object_particle_is_the_error() {
     let source = in_main("    가에 반환해요.");
     assert_eq!(error(&source), (PostParseErrorKind::GiveArguments, "가에"));
-}
-
-#[test]
-fn put_without_target_is_an_error_on_the_chain() {
-    let source = in_main("    1을 넣어요.");
-    assert_eq!(
-        error(&source),
-        (PostParseErrorKind::PutArguments, "1을 넣어요")
-    );
-}
-
-#[test]
-fn second_target_of_put_is_the_error() {
-    let source = in_main("    1을 가에 가에 넣어요.");
-    assert_eq!(error(&source), (PostParseErrorKind::PutArguments, "가에"));
 }
 
 #[test]

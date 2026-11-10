@@ -66,6 +66,6 @@ right_program string_gwa "$PRINTF"$'\n''정수를 반환하는 main() { "%ld\n"�
 right_program string_wa "$PRINTF"$'\n''정수를 반환하는 main() { "%ld\n"와 3을 printf해요. 0을 반환해요. }'
 
 # (으)로
-wrong euro_after_vowel '가는 1이에요. 나는 소수예요. 가를 소수으로 바꿔서 나에 넣어요. 0을 반환해요.'
-right ro_after_vowel '가는 1이에요. 나는 소수예요. 가를 소수로 바꿔서 나에 넣어요. 0을 반환해요.'
+wrong euro_after_vowel '가는 1이에요. 나는 소수예요. 나는 가를 소수으로 바꾼 값이에요. 0을 반환해요.'
+right ro_after_vowel '가는 1이에요. 나는 소수예요. 나는 가를 소수로 바꾼 값이에요. 0을 반환해요.'
 manual "로 after a ㄹ 받침 (결말로): names take no (으)로 and no type ends in ㄹ, so only a unit test of the rule can show it"

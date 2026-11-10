@@ -7,7 +7,7 @@ to `printf`).
 Decisions already made:
 
 - Identifiers do not accept digits (hangul, latin and `_`).
-- Speech level: 해요체 in function bodies (`예요`, `반환해요`, `넣어요`…). The sentence declaration
+- Speech level: 해요체 in function bodies (`예요`, `반환해요`, `더해요`…). The sentence declaration
   reads like a line of a specification and ends with the noun `반환` (see
   [Sentence declaration](#sentence-declaration)).
 - End of statement: the ending in `요` ends the statement, no `;`. A `.` is accepted right after
@@ -26,8 +26,8 @@ Decisions already made:
   attached.
 - Plain arithmetic is always possible: wherever a value is expected (assignment, argument, return,
   declaration, condition), an expression with operators is accepted, without going through a
-  function. Between parentheses if a particle follows: `개수에 (개수 + 1)을 넣어요` (`a = a + 1`),
-  `결과에 (가 * 나)를 넣어요` (`a = b * c`).
+  function. Between parentheses if a particle follows: `개수는 (개수 + 1)이에요` (`a = a + 1`),
+  `결과는 (가 * 나)예요` (`a = b * c`).
 - Negative number: `-5` is a simple term (`-5를 반환해요`). The `-` stays a separate token in the
   lexer (otherwise `가-5` would give `가` then `-5`); the parser attaches `-` to a number. `-가`
   stays an expression: `(-가)를 반환해요`.
@@ -302,7 +302,7 @@ choice against the 받침 (`나을` → "받침이 없으니 '를'을 쓰세요"
 | | Concept | Word | Notes |
 | --- | --- | --- | --- |
 | ★ | function | `TYPE을/를 반환하는 VERB다(TYPE name, …) { … }` | "VERB, which gives a TYPE"; without return: `VERB다(…) { … }` |
-| | variable | `NAME은/는 VALUE이에요/예요` or `NAME은/는 TYPE이에요/예요` | with a value: deduced type (`0` → `정수`, `0.5` → `소수`); with a type: default value (zero of the type); `이에요` after a consonant, `예요` after a vowel; mutable by default |
+| | variable | `NAME은/는 VALUE이에요/예요` or `NAME은/는 TYPE이에요/예요` | with a value: deduced type (`0` → `정수`, `0.5` → `소수`); with a type: default value (zero of the type); `이에요` after a consonant, `예요` after a vowel; mutable by default; with a value on a name already declared: a new value (see Modifiers) |
 | | constant | `고정된 NAME은/는 VALUE이에요/예요` | see Modifiers |
 | | function of another file | `TYPE을/를 반환하는 VERB다(TYPE name, …)` | no body, no `외부`: defined in another file of the program, see Several files |
 | ★ | external function (libc) | `외부 TYPE을/를 반환하는 name(TYPE name, …)` | latin name only (`외부` is for the libc), no body; `…` for variadics: `외부 정수를 반환하는 printf(문자 주소 형식, …)` |
@@ -339,8 +339,7 @@ A file calls a function of another file through a declaration without a body and
 정수를 반환하는 더하다(정수 가, 정수 나)     // defined in lib.kr
 
 정수를 반환하는 main() {
-    결과는 정수예요.
-    40과 2를 더해서 결과에 넣어요.
+    결과는 40과 2를 더한 값이에요.
     결과를 반환해요.                        // 42
 }
 ```
@@ -422,7 +421,8 @@ next word. A particle (`를`, `과`…) announces a call chain, `인 동안` a l
 
 Every arithmetic operator of C that has no Korean word keeps its symbol, with the precedence and
 associativity of C. Only `&&`, `||` and `!` are replaced by words (see the next section).
-Assignment (`=`, `+=`…) and `++` / `--` do not exist: use `넣다`.
+Assignment (`=`, `+=`…) and `++` / `--` do not exist: write the new value like a declaration,
+`개수는 (개수 + 1)이에요`.
 
 | Precedence (high → low) | Operators | Associativity |
 | --- | --- | --- |
@@ -471,20 +471,22 @@ negation right after a condition.
 | | immutable | `고정된` | "fixed" (고정되다 → `고정된`); placed before the name, like `짧은 정수`; longer variant: `바뀌지 않는` ("that does not change") |
 
 ```
-개수는 0이에요                    // mutable
-고정된 합은 3과 4를 더한 값이에요  // immutable
-개수에 1을 넣어요                 // assignment: "put 1 into 개수"
-개수와 1을 더해서 개수에 넣어요    // 개수 = 개수 + 1
-개수에 개수와 1을 더해서 넣어요    // the same, with the destination first
-합에 5를 넣어요                   // error: 합 is 고정된
+개수는 0이에요                       // mutable
+고정된 합은 3과 4를 더한 값이에요     // immutable
+개수는 1이에요                       // assignment: 개수 is already declared
+개수는 개수와 1을 더한 값이에요       // 개수 = 개수 + 1
+개수는 (개수 + 1)이에요              // the same, without a function
+합은 5예요                           // error: 합 is 고정된
+개수는 정수예요                       // error: 개수 is already declared
 ```
 
-Assignment uses the built-in verb 넣다 ("put into") with `에` ("into"): it naturally goes at the
-end of a chain. `넣어요` ends the sentence, `넣어서` continues the chain with the assigned value.
+An assignment is written like the declaration: `NAME은/는 VALUE이에요/예요` on a name already
+declared in the block or a block around it gives that variable a new value, of its type. There
+is no shadowing, so the sentence cannot declare a second variable of the same name. Only a
+value assigns: a type (`개수는 정수예요`) or `고정된` on a name already declared is an error.
 
-The destination `NAME에` can also open the sentence, before the chain: a leading `NAME에` is an
-argument of the **last** verb of the chain. There is no ambiguity, since only that verb can take
-it and no other step expects an `에`.
+The value can be the result of a chain: its last verb takes the adnominal form before `값`
+(`개수는 3과 4를 더해서 제곱한 값이에요`, `결과는 "%ld\n"과 1을 printf한 값이에요`).
 
 ## Predefined names
 
@@ -493,7 +495,6 @@ it and no other step expects an `에`.
 | ★ | entry point (`main`) | `main` | the only exception to the all-Korean language: the libc calls it by this name |
 | ★ | print | — | no built-in function: `printf` of the libc, declared with `외부` |
 | ★ | return a value | `반환하다` | `반환해요`: end of a chain that returns the result (see Control flow); `반환하는` and `반환` in declarations |
-| | assign | `넣다` | `NAME에 VALUE을/를 넣어요`; at the end of a chain: `… 개수에 넣어요` |
 | | convert | `바꾸다` | `TERM을/를 TYPE(으)로 바꿔서` (see Word operators) |
 | | count (loop) | `세다` | `[TYPE] NAME을/를 A부터 B까지 세면서` (see Control flow) |
 
@@ -503,7 +504,7 @@ These verbs are reserved: a user function cannot take their name.
 외부 정수를 반환하는 printf(문자 주소 형식, …)
 
 "%ld\n"과 42를 printf해요                  // 42
-3과 4를 더해서 결과에 넣어요
+결과는 3과 4를 더한 값이에요
 "%ld\n"과 결과를 printf해요                // 7
 ```
 

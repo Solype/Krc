@@ -112,7 +112,6 @@ pub struct Statement {
 pub enum StatementKind {
     Declare(Declare),
     Init(Init),
-    Assign(Assign),
     /// A chain ending with `반환해요`: `(가 + 나)를 반환해요.`
     Return(Expr),
     /// A chain ending with any other verb, its result unused: `"%ld\n"과 결과를 printf해요.`
@@ -132,18 +131,13 @@ pub struct Declare {
     pub ty: Type,
 }
 
-/// `결과는 0이에요.`, `고정된 끝은 10이에요.`, `합은 3과 4를 더한 값이에요.`
+/// `결과는 0이에요.`, `고정된 끝은 10이에요.`, `합은 3과 4를 더한 값이에요.`; the converter makes it a
+/// reassignment when `name` is already declared
 pub struct Init {
     pub name: String,
     pub value: Expr,
     /// `고정된`
     pub constant: bool,
-}
-
-/// A chain ending with `넣어요`: `3과 4를 더해서 결과에 넣어요.`
-pub struct Assign {
-    pub target: String,
-    pub value: Expr,
 }
 
 /// `만약 COND면 { … } 아니면 { … }`; `아니면 만약` is an `If` alone in `otherwise`

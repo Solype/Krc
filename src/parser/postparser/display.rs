@@ -1,7 +1,7 @@
 use std::fmt;
 
 use super::structs::{
-    Argument, Assign, BinaryOp, Declare, Expr, ExprKind, For, Function, If, Init, Param, Program,
+    Argument, BinaryOp, Declare, Expr, ExprKind, For, Function, If, Init, Param, Program,
     Statement, StatementKind, Type, UnaryOp, While,
 };
 
@@ -98,7 +98,6 @@ fn line(f: &mut fmt::Formatter, statement: &Statement, depth: usize) -> fmt::Res
             "{} {name} = {value}",
             if *constant { "const" } else { "let" }
         ),
-        StatementKind::Assign(Assign { target, value }) => writeln!(f, "{target} = {value}"),
         StatementKind::Return(value) => writeln!(f, "return {value}"),
         StatementKind::Call(call) => writeln!(f, "{call}"),
         StatementKind::If(If {
