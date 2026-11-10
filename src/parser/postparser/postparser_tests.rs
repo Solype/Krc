@@ -8,9 +8,7 @@ use super::super::cfg::parser::Parser;
 use super::super::cfg::rules::RULES;
 use super::post_parse_error::PostParseErrorKind;
 use super::postparser::convert_to_ast_tree;
-use super::structs::{
-    Argument, Expr, ExprKind, If, Init, Program, Statement, StatementKind, Type,
-};
+use super::structs::{Argument, Expr, ExprKind, If, Init, Program, Statement, StatementKind, Type};
 
 /// Building the table takes seconds in debug: once for all the tests
 fn parser() -> &'static Parser {

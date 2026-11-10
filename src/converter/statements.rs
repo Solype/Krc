@@ -3,8 +3,8 @@ use super::ir::structs::{Function as IrFunc, Instr as IrInstr, Operand as IrOper
 use super::scope::LoopLabels;
 use crate::lexer::span::Span;
 use crate::parser::postparser::structs::{
-    Argument, BinaryOp, Declare, Expr, ExprKind, For, Function, If, Init, Statement,
-    StatementKind, Type, UnaryOp, While,
+    Argument, BinaryOp, Declare, Expr, ExprKind, For, Function, If, Init, Statement, StatementKind,
+    Type, UnaryOp, While,
 };
 
 use super::convert_error::{ConvertError, ConvertErrorKind};
