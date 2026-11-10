@@ -20,32 +20,32 @@
     다는 (가 + 나)예요.             // 3.75
     라는 (다 - 0.75)예요.           // 3.0
     마는 소수예요.
-    라와 4.5를 곱해서 마에 넣어요.   // 13.5, parameters and return in xmm0 / xmm1
+    마는 라와 4.5를 곱한 값이에요.   // 13.5, parameters and return in xmm0 / xmm1
     바는 (마 / 0.5)예요.            // 27.0
     사는 (-바)예요.                 // -27.0
     "%f %f\n"과 바와 사를 printf해요.
 
     // 짧은 소수: 4 bytes; printf wants a double, hence the conversion
     아는 짧은 소수예요.
-    아에 2.5를 넣어요.
+    아는 2.5예요.
     자는 소수예요.
-    아를 소수로 바꿔서 자에 넣어요.
+    자는 아를 소수로 바꾼 값이에요.
     "%f\n"과 자를 printf해요.
 
     // back to an integer: cvttsd2si truncates toward 0
     차는 정수예요.
-    바를 정수로 바꿔서 차에 넣어요.   // 27
+    차는 바를 정수로 바꾼 값이에요.   // 27
     카는 정수예요.
-    자를 정수로 바꿔서 카에 넣어요.   // 2
+    카는 자를 정수로 바꾼 값이에요.   // 2
     파는 (차 + 카)예요.
 
     // ucomisd sets ZF on a NaN, as if equal: == and != must also read PF
     타는 (0.0 / 0.0)이에요.
     만약 타 == 타면 {
-        파에 (파 + 2)를 넣어요.
+        파는 (파 + 2)예요.
     }
     만약 타 != 타면 {
-        파에 (파 + 1)을 넣어요.
+        파는 (파 + 1)이에요.
     }
     파를 반환해요.
 }

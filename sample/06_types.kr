@@ -25,7 +25,7 @@
     "%ld\n"과 넓이를 printf해요.
 
     // conversion with the built-in verb 바꾸다
-    7을 소수로 바꿔서 비율에 넣어요.
+    비율은 7을 소수로 바꾼 값이에요.
     "%f\n"과 비율을 printf해요.    // 7.0
 
     0을 반환해요.

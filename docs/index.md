@@ -13,9 +13,9 @@ particles. It started in the Compiler class of Chung-Ang University and now cont
 두 정수 가와 나를 받아 나누고 정수를 반환 {
     나머지는 정수예요.
     (나 == 0)이 아닌 동안 {
-        나머지에 (가 % 나)를 넣어요.
-        가에 나를 넣어요.
-        나에 나머지를 넣어요.
+        나머지는 (가 % 나)예요.
+        가는 나예요.
+        나는 나머지예요.
     }
     가를 반환해요.
 }
@@ -56,7 +56,7 @@ Then compile and run it:
 
 - **Functions are verbs.** Calls chain like a sentence, without nesting:
   `3과 4를 더해서 제곱해서 반환해요`.
-- **Arguments carry their particles**, as in `나머지에 (가 % 나)를 넣어요`.
+- **Arguments carry their particles**, as in `48과 18을 나눈 값이에요`.
 - **Statements end in the polite 해요 style**, as in `42를 반환해요.`.
 - **libc functions are called with `하다`**, like foreign words in Korean:
   `"%ld\n"과 가를 printf해요.`.

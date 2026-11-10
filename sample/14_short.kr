@@ -14,12 +14,12 @@
 짧은 정수를 반환하는 main() {
     가는 짧은 정수예요.
     나는 짧은 정수예요.
-    가에 5를 넣어요.            // Copy: without the size, 나 would overwrite 가
-    나에 7을 넣어요.
+    가는 5예요.            // Copy: without the size, 나 would overwrite 가
+    나는 7이에요.
     다는 (가 + 나)예요.         // Binary: without the size, the result would overwrite 나
     라는 짧은 정수예요.
-    라에 -20을 넣어요.
+    라는 -20이에요.
     마는 짧은 정수예요.
-    30과 8을 빼서 마에 넣어요.   // 22
+    마는 30과 8을 뺀 값이에요.   // 22
     ((((가 + 나) + 다) + 마) + (라 / 6))을 반환해요.   // (라 / 6) = -3
 }

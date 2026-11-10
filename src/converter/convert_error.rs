@@ -15,7 +15,7 @@ pub enum ConvertErrorKind {
     UnknownVariable(String),
     /// No function of this verb takes arguments of these types
     UnknownFunction { verb: String, types: String },
-    /// `넣어요` or `세면서` on a `고정된` variable
+    /// A new value (`가는 1이에요.`) or `세면서` on a `고정된` variable
     AssignToConstant(String),
     /// `반환해요` in a function without `TYPE을 반환하는`
     ReturnWithoutType(String),
@@ -29,7 +29,7 @@ pub enum ConvertErrorKind {
     MainNotInteger,
     /// `반환해요` of a value whose type is not the `TYPE을 반환하는` of its function
     WrongReturnType { expected: String, found: String },
-    /// `넣어요` of a value whose type is not the type of its variable
+    /// A new value (`가는 1이에요.`) whose type is not the type of its variable
     WrongAssignType {
         name: String,
         expected: String,

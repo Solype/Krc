@@ -8,7 +8,7 @@ use super::super::parser_token::{Keyword, ParserTokenKind, Particle, Type as Tok
 
 use super::post_parse_error::{PostParseError, PostParseErrorKind};
 use super::structs::{
-    Argument, Assign, BinaryOp, Declare, Expr, ExprKind, For, Function, If, Init, Param, Program,
+    Argument, BinaryOp, Declare, Expr, ExprKind, For, Function, If, Init, Param, Program,
     Statement, StatementKind, Type, UnaryOp, While,
 };
 
@@ -430,7 +430,8 @@ fn statement(node: &TreeNode) -> Result<Statement, PostParseError> {
 }
 
 /// VariableDeclaration → [고정된] Name 는 DeclarationValue 이에요 OptionalDot
-/// DeclarationValue → Operand | TypeSpec | Arguments VERB-ㄴ 값 | VERB-ㄴ 값
+/// DeclarationValue → Operand | TypeSpec | Steps ValueStep 값 | ValueStep 값
+/// ValueStep → Arguments VERB-ㄴ | VERB-ㄴ, a chain whose last verb gives the value
 fn variable_declaration(node: &TreeNode) -> Result<StatementKind, PostParseError> {
     let children = branch(node).1;
     let constant = children.len() == 6;
@@ -452,23 +453,15 @@ fn variable_declaration(node: &TreeNode) -> Result<StatementKind, PostParseError
             }));
         }
         [operand] => expression(operand)?,
-        [args, adnominal, _] => Expr {
-            kind: ExprKind::Call {
-                verb: verb(adnominal),
-                args: arguments(args)?
-                    .into_iter()
-                    .map(to_argument)
-                    .collect::<Result<_, _>>()?,
-            },
-            span: span(declared),
-        },
-        [adnominal, _] => Expr {
-            kind: ExprKind::Call {
-                verb: verb(adnominal),
-                args: Vec::new(),
-            },
-            span: span(declared),
-        },
+        [steps, last, _] => {
+            let previous = chain_steps(step_list(steps)?)?;
+            let (args, last_verb, last_span) = step(last)?;
+            call(last_verb.unwrap(), previous, args, last_span)?
+        }
+        [last, _] => {
+            let (args, last_verb, last_span) = step(last)?;
+            call(last_verb.unwrap(), None, args, last_span)?
+        }
         _ => unreachable!(),
     };
     Ok(StatementKind::Init(Init {
@@ -587,21 +580,17 @@ fn to_argument((arg, arg_span): (Arg, Span)) -> Result<Argument, PostParseError>
 /// Steps → Step | Steps Step
 /// Step → Arguments LinkVerb | LinkVerb, and EndStep the same with EndVerb
 /// The result of each step is the first argument of the next one; the end verb makes the
-/// statement: 반환해요 a `Return`, 넣어요 an `Assign`, any other verb a `Call`
+/// statement: 반환해요 a `Return`, any other verb a `Call`
 fn chain(node: &TreeNode) -> Result<StatementKind, PostParseError> {
     let (steps, end) = match branch(node).1 {
         [steps, end] => (step_list(steps)?, end),
         [end] => (Vec::new(), end),
         _ => unreachable!(),
     };
-    let mut previous = None;
-    for (args, verb, step_span) in steps {
-        previous = Some(call(verb.unwrap(), previous, args, step_span)?);
-    }
+    let previous = chain_steps(steps)?;
     let (args, end_verb, end_span) = step(end)?;
     match end_verb.as_deref() {
         None => give(previous, args, span(node)),
-        Some("넣다") => put(previous, args, span(node)),
         Some(_) => Ok(StatementKind::Call(call(
             end_verb.unwrap(),
             previous,
@@ -609,6 +598,16 @@ fn chain(node: &TreeNode) -> Result<StatementKind, PostParseError> {
             end_span,
         )?)),
     }
+}
+
+/// The calls of the `-아/어서` steps, each one the first argument of the next: the last one,
+/// `None` without steps
+fn chain_steps(steps: Vec<Step>) -> Result<Option<Expr>, PostParseError> {
+    let mut previous = None;
+    for (args, verb, step_span) in steps {
+        previous = Some(call(verb.unwrap(), previous, args, step_span)?);
+    }
+    Ok(previous)
 }
 
 /// The arguments, the verb and the source of each step
@@ -625,7 +624,8 @@ fn step_list(node: &TreeNode) -> Result<Vec<Step>, PostParseError> {
 }
 
 /// The arguments, the verb and the source of a step; the verb is `None` for 반환해요
-/// LinkVerb → VERB-서 | Name VERB-서 (`printf해서`), EndVerb → VERB-요 | Name VERB-요 | 반환해요
+/// LinkVerb → VERB-서 | Name VERB-서 (`printf해서`), EndVerb → VERB-요 | Name VERB-요 | 반환해요,
+/// AdnominalVerb → VERB-ㄴ | Name VERB-ㄴ (`printf한`)
 fn step(node: &TreeNode) -> Result<Step, PostParseError> {
     let (args, verb_node) = match branch(node).1 {
         [args, verb_node] => (arguments(args)?, verb_node),
@@ -686,36 +686,6 @@ fn give(
         return Err(error(arg_span));
     }
     Ok(StatementKind::Return(value))
-}
-
-/// `X를 Y에 넣어요`, or `… 해서 Y에 넣어요` that puts the result of the chain. The error is on
-/// the argument that is none of them, or one of them twice; a missing one makes the whole chain
-/// (`chain_span`) the error
-fn put(
-    previous: Option<Expr>,
-    args: Vec<(Arg, Span)>,
-    chain_span: Span,
-) -> Result<StatementKind, PostParseError> {
-    let error = |span| PostParseError::new(PostParseErrorKind::PutArguments, span);
-    let mut target = None;
-    let mut value = previous;
-    for (arg, arg_span) in args {
-        match arg {
-            Arg::Value(
-                Expr {
-                    kind: ExprKind::Name(name),
-                    ..
-                },
-                Particle::In,
-            ) if target.is_none() => target = Some(name),
-            Arg::Value(object, Particle::Object) if value.is_none() => value = Some(object),
-            _ => return Err(error(arg_span)),
-        }
-    }
-    let (Some(target), Some(value)) = (target, value) else {
-        return Err(error(chain_span));
-    };
-    Ok(StatementKind::Assign(Assign { target, value }))
 }
 
 /// Arguments → Argument | Arguments Argument

@@ -273,9 +273,15 @@ fn definition_with_or_without_return_type() {
 
 #[test]
 fn builtin_verbs() {
-    assert_eq!(pre("넣어요"), [verb("넣다", Ending::Yo)]);
-    assert_eq!(pre("넣어서"), [verb("넣다", Ending::Seo)]);
+    assert_eq!(pre("바꿔요"), [verb("바꾸다", Ending::Yo)]);
     assert_eq!(pre("바꿔서"), [verb("바꾸다", Ending::Seo)]);
+    assert_eq!(pre("바꾼"), [verb("바꾸다", Ending::Adnominal)]);
+}
+
+#[test]
+fn put_is_no_builtin_verb() {
+    // an assignment is written like a declaration: `가는 1이에요`
+    assert_eq!(unknown("가는 0이에요. 가에 1을 넣어요"), "넣어요");
 }
 
 #[test]
@@ -386,7 +392,7 @@ fn variable_at_the_start_of_any_statement() {
     assert_names("고정된 끝은 10이에요.", &["끝"]);
     assert_names("0을 반환해요 결과는 0이에요", &["결과"]);
     assert_names(
-        "결과는 0이에요. 결과에 0을 넣어요 수는 1이에요",
+        "결과는 0이에요. 결과를 소수로 바꿔요 수는 1이에요",
         &["결과", "수"],
     );
     // after 이에요 without a `.`
