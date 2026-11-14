@@ -41,24 +41,26 @@ impl PreParser<'_> {
 
     /// A verb in its dictionary form must be followed by `(` or `{`: `더하다(…)` and `인사하다 {`
     /// are definitions, `바다` alone is probably a name ending in 다
-    pub(super) fn check_parentheses(&self, parsed: &[ParserToken]) -> Option<PreParseWarning> {
-        let [token] = parsed else { return None };
+    pub(super) fn check_parentheses(&mut self, parsed: &[ParserToken]) {
+        let [token] = parsed else {
+            return;
+        };
         let ParserTokenKind::Verb {
             infinitive,
             ending: Ending::Da,
         } = &token.kind
         else {
-            return None;
+            return;
         };
         let defined = matches!(
             self.peek().kind,
             LexerTokenKind::Punctuation(Punctuation::LParen | Punctuation::LBrace)
         );
-        (!defined).then(|| {
-            PreParseWarning::new(
+        if !defined {
+            self.warnings.push(PreParseWarning::new(
                 PreParseWarningKind::VerbWithoutParentheses(infinitive.clone()),
                 token.span,
-            )
-        })
+            ));
+        }
     }
 }

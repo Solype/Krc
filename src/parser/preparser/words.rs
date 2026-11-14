@@ -4,7 +4,7 @@ use super::super::parser_token::{
     Particle::{self, *},
     Type,
 };
-use crate::hangeul::conjugaison::get_verb_form;
+use crate::hangeul::{conjugaison::get_verb_form, syllable::Syllable};
 
 /// Every one-word keyword; `부호 없는` (Unsigned) is two lexer tokens, merged by the pre-parser
 pub(super) const KEYWORDS: &[(&str, Keyword)] = &[
@@ -174,4 +174,25 @@ pub(super) fn is_counter(word: &str) -> Option<usize> {
         .iter()
         .find(|(text, _)| *text == word)
         .map(|(_, count)| *count)
+}
+
+/// `word` followed by the form of `particle` its last syllable takes: 나 → 나를, 끝 → 끝을.
+/// In a pair of NAME_PARTICULES, the first form is the one after a 받침 (을/를, 이에요/예요)
+pub(super) fn expected_form(word: &str, particle: &Particle) -> String {
+    let filtered: Vec<&(&str, Particle)> = NAME_PARTICULES
+        .iter()
+        .filter(|(_, p)| p == particle)
+        .collect();
+    let form = match filtered.len() {
+        1 => filtered[0].0,
+        2 => {
+            if word.chars().last().is_some_and(Syllable::end_with_batchim) {
+                filtered[0].0
+            } else {
+                filtered[1].0
+            }
+        }
+        _ => unreachable!(),
+    };
+    word.to_string() + form
 }

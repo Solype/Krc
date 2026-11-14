@@ -11,7 +11,7 @@ impl PreParser<'_> {
     /// One lexer token gives one parser token, or two for a split word (정수를 → 정수 + 를);
     /// `prev` is the lexer token before it, if any
     pub(super) fn transform_token(
-        &self,
+        &mut self,
         token: &LexerToken,
         prev: Option<&LexerTokenKind>,
     ) -> Result<Vec<ParserToken>, PreParseError> {
@@ -36,7 +36,7 @@ impl PreParser<'_> {
     /// 3. a keyword, a type or a boolean followed by a particle: 정수를, 값이에요, 10개예요, 참이면
     /// 4. anything else is an identifier, left whole: 나를, 결과
     fn hangul_word(
-        &self,
+        &mut self,
         word: &str,
         span: Span,
         prev: Option<&LexerTokenKind>,

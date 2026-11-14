@@ -27,6 +27,8 @@ pub(super) struct PreParser<'a> {
     pub(super) pos: usize,
     /// Every form of the known verbs → (infinitive, ending): 더해서 → (더하다, Seo)
     pub(super) verbs: HashMap<String, (String, Ending)>,
+    /// What looked suspicious so far, returned in `PreParsed`
+    pub(super) warnings: Vec<PreParseWarning>,
 }
 
 impl<'a> PreParser<'a> {
@@ -45,6 +47,7 @@ impl<'a> PreParser<'a> {
             tokens,
             pos: 0,
             verbs,
+            warnings: Vec::new(),
         }
     }
 
@@ -64,7 +67,6 @@ impl<'a> PreParser<'a> {
 
     fn run(mut self) -> Result<PreParsed, PreParseError> {
         let mut tokens = Vec::new();
-        let mut warnings = Vec::new();
         let mut prev = None;
         loop {
             let token = self.bump();
@@ -73,9 +75,7 @@ impl<'a> PreParser<'a> {
                 None => self.transform_token(token, prev)?,
             };
             let parsed = Self::amp_after_a_type(parsed, tokens.last());
-            if let Some(warning) = self.check_parentheses(&parsed) {
-                warnings.push(warning);
-            }
+            self.check_parentheses(&parsed);
             tokens.extend(parsed);
             if token.kind == LexerTokenKind::Eof {
                 break;
@@ -83,11 +83,11 @@ impl<'a> PreParser<'a> {
             // the last lexer token read: 없는 after a merged 부호 없는
             prev = Some(&self.tokens[self.pos - 1].kind);
         }
-        let names = Self::declared_names(&tokens)?;
+        let names = self.declared_names(&tokens)?;
         for (i, replacement) in names.splits.into_iter().rev() {
             tokens.splice(i..=i, replacement);
         }
-        let tokens = Self::tokenize_names(tokens, &names.names);
+        let tokens = self.tokenize_names(tokens, &names.names);
         // every word is classified by now: an `Ident` left is a name never declared
         if let Some(err) = tokens.iter().find_map(|token| match &token.kind {
             ParserTokenKind::Ident(word) => Some(PreParseError::new(
@@ -99,6 +99,9 @@ impl<'a> PreParser<'a> {
             return Err(err);
         }
 
-        Ok(PreParsed { tokens, warnings })
+        Ok(PreParsed {
+            tokens,
+            warnings: self.warnings,
+        })
     }
 }

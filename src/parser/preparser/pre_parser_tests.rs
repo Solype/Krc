@@ -8,8 +8,20 @@ use super::pre_parse;
 use super::pre_parse_error::{PreParseError, PreParseErrorKind};
 use super::pre_parse_warning::PreParseWarningKind;
 use super::words::{
-    KEYWORDS, NAME_PARTICULES, PARTICULES, has_particule, is_keyword, is_name_particle, is_particle,
+    KEYWORDS, NAME_PARTICULES, PARTICULES, expected_form, has_particule, is_keyword,
+    is_name_particle, is_particle,
 };
+
+#[test]
+fn expected_form_follows_the_batchim() {
+    assert_eq!(expected_form("나", &Particle::Object), "나를");
+    assert_eq!(expected_form("끝", &Particle::Object), "끝을");
+    assert_eq!(expected_form("결과", &Particle::With), "결과와");
+    assert_eq!(expected_form("값", &Particle::ItIs), "값이에요");
+    assert_eq!(expected_form("가", &Particle::IfItIs), "가면");
+    // a particle with one form
+    assert_eq!(expected_form("끝", &Particle::In), "끝에");
+}
 
 #[test]
 fn every_keyword_is_found() {

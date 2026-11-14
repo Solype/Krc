@@ -25,9 +25,13 @@ impl Syllable {
         })
     }
 
-    pub fn to_char(self) -> char {
+    pub fn to_char(&self) -> char {
         let code = 588 * self.initial as u32 + 28 * self.vowel as u32 + self.batchim as u32;
         char::from_u32(FIRST + code).expect("jamo index out of range")
+    }
+
+    pub fn end_with_batchim(c: char) -> bool {
+        Self::from_char(c).is_some_and(|s| s.has_batchim())
     }
 
     pub fn has_batchim(self) -> bool {
