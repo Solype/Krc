@@ -1,7 +1,10 @@
 pub mod pre_parse_error;
 pub mod pre_parse_warning;
 
+mod classify;
+mod names;
 mod pre_parser;
+mod verbs;
 mod words;
 
 #[cfg(test)]
