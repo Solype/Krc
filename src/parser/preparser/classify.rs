@@ -1,10 +1,15 @@
 use super::super::parser_token::{Keyword, ParserToken, ParserTokenKind, Type};
+use crate::hangeul::syllable::Syllable;
 use crate::lexer::lexer_token::{LexerToken, LexerTokenKind, Operator, Punctuation};
 use crate::lexer::span::Span;
 
 use super::pre_parse_error::PreParseError;
+use super::pre_parse_warning::{PreParseWarning, PreParseWarningKind};
 use super::pre_parser::PreParser;
-use super::words::{has_particule, is_bool, is_counter, is_keyword, is_particle, is_type};
+use super::words::{
+    expected_form, has_particule, is_bool, is_counter, is_keyword, is_name_particle, is_particle,
+    is_type,
+};
 
 /// One lexer token into parser tokens, before the declared names are known
 impl PreParser<'_> {
@@ -26,6 +31,45 @@ impl PreParser<'_> {
             LexerTokenKind::Eof => ParserTokenKind::Eof,
         };
         Ok(vec![ParserToken::new(kind, token.span)])
+    }
+
+    /// After a number, a string, `)` or a Latin name, `word` is a particle alone (42를, 0이에요,
+    /// printf를); after a number, a warning when it does not fit the 받침 of the number read in
+    /// Sino-Korean. None when `word` is no particle there
+    fn check_solo_particule(
+        &mut self,
+        word: &str,
+        span: Span,
+        prev: Option<&LexerTokenKind>,
+    ) -> Option<Vec<ParserToken>> {
+        let particle = is_particle(word)?;
+        match prev? {
+            // the 받침 of the last syllable read: the last digit, or 십 백 천… (영 for 0) when
+            // it is 0, which all have one like 영; (으)로 and 의 have no rule here
+            LexerTokenKind::Int(n) if is_name_particle(word).is_some() => {
+                let read = Syllable::char_from_number(n % 10)?.to_string();
+                let expected = expected_form(&read, &particle);
+                if expected != read.clone() + word {
+                    self.warnings.push(PreParseWarning::new(
+                        PreParseWarningKind::BadBatchim {
+                            found: format!("{n}{word}"),
+                            expected: format!("{n}{}", &expected[read.len()..]),
+                        },
+                        span,
+                    ));
+                }
+            }
+            LexerTokenKind::Int(_)
+            | LexerTokenKind::Float(_)
+            | LexerTokenKind::Str(_)
+            | LexerTokenKind::Punctuation(Punctuation::RParen)
+            | LexerTokenKind::LatinWord(_) => {}
+            _ => return None,
+        }
+        Some(vec![ParserToken::new(
+            ParserTokenKind::Particle(particle),
+            span,
+        )])
     }
 
     /// Classifies a Hangul word, in this order:
@@ -64,18 +108,8 @@ impl PreParser<'_> {
             });
         }
 
-        let after_a_value = matches!(
-            prev,
-            Some(
-                LexerTokenKind::Int(_)
-                    | LexerTokenKind::Float(_)
-                    | LexerTokenKind::Str(_)
-                    | LexerTokenKind::Punctuation(Punctuation::RParen)
-                    | LexerTokenKind::LatinWord(_)
-            )
-        );
-        if after_a_value && let Some(particle) = is_particle(word) {
-            return whole(ParserTokenKind::Particle(particle));
+        if let Some(particle) = self.check_solo_particule(word, span, prev) {
+            return Ok(particle);
         }
 
         if let Some((stem, particle)) = has_particule(word) {
@@ -84,6 +118,18 @@ impl PreParser<'_> {
                 .or_else(|| is_type(stem).map(ParserTokenKind::Type))
                 .or_else(|| is_bool(stem).map(ParserTokenKind::Bool));
             if let Some(stem_kind) = stem_kind {
+                if is_name_particle(&word[stem.len()..]).is_some() {
+                    let expected = expected_form(stem, &particle);
+                    if word != expected {
+                        self.warnings.push(PreParseWarning::new(
+                            PreParseWarningKind::BadBatchim {
+                                found: format!("{word}"),
+                                expected: format!("{stem}{}", &expected[word.len()..]),
+                            },
+                            span,
+                        ));
+                    }
+                }
                 // byte offsets, like Span: 정수를 0..9 → 정수 0..6, 를 6..9
                 let cut = span.start + stem.len();
                 return Ok(vec![

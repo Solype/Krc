@@ -65,6 +65,13 @@ impl<'a> PreParser<'a> {
         token
     }
 
+    /// 1 : initialize main variable
+    /// 2 : for each token :
+    ///     - get the token
+    ///     - if this token and the next one forms together "unsigned", on les merges
+    ///     - else, we transform the token
+    ///         the transoformation is straight forward for most of the tokens except the hangeul ones
+    ///     -
     fn run(mut self) -> Result<PreParsed, PreParseError> {
         let mut tokens = Vec::new();
         let mut prev = None;
@@ -72,6 +79,7 @@ impl<'a> PreParser<'a> {
             let token = self.bump();
             let parsed = match self.merge_unsigned(token) {
                 Some(unsigned) => vec![unsigned],
+                // Main use of preparser !!!
                 None => self.transform_token(token, prev)?,
             };
             let parsed = Self::amp_after_a_type(parsed, tokens.last());
@@ -83,6 +91,7 @@ impl<'a> PreParser<'a> {
             // the last lexer token read: 없는 after a merged 부호 없는
             prev = Some(&self.tokens[self.pos - 1].kind);
         }
+        // reference all the names
         let names = self.declared_names(&tokens)?;
         for (i, replacement) in names.splits.into_iter().rev() {
             tokens.splice(i..=i, replacement);

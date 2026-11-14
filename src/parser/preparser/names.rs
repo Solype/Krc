@@ -48,7 +48,9 @@ impl PreParser<'_> {
             // from the longest name down: 가나를 tries 가나 before 가
             let split = Self::cutted_name(word, &names);
             match split {
-                Some((name, particle)) => out.extend(Self::split_name(name, particle, token.span)),
+                Some((name, particle)) => {
+                    out.extend(self.split_name(word, name, particle, token.span))
+                }
                 None => out.push(token),
             }
         }
@@ -137,7 +139,30 @@ impl PreParser<'_> {
             return Ok(());
         }
 
+        scan.declare(name, span)?;
+        // a variable outside any function is global; a parameter at depth 0 is not
+        if scan.depth == 0 && particle == Particle::Topic {
+            scan.globals = scan.scope.len();
+        }
+        scan.declared
+            .splits
+            .insert(i, self.split_name(word, name, particle, span));
+        scan.untyped_next = particle == Particle::With;
+        Ok(())
+    }
+
+    /// `word` cut after its name, each part with its own span
+    /// (byte offsets, like Span: 결과는 0..9 → 결과 0..6, 는 6..9); a warning when its particle
+    /// does not fit the 받침 of the name (끝는)
+    fn split_name(
+        &mut self,
+        word: &str,
+        name: &str,
+        particle: Particle,
+        span: Span,
+    ) -> [ParserToken; 2] {
         let expected = expected_form(name, &particle);
+
         if word != expected {
             self.warnings.push(PreParseWarning::new(
                 PreParseWarningKind::BadBatchim {
@@ -148,21 +173,6 @@ impl PreParser<'_> {
             ));
         }
 
-        scan.declare(name, span)?;
-        // a variable outside any function is global; a parameter at depth 0 is not
-        if scan.depth == 0 && particle == Particle::Topic {
-            scan.globals = scan.scope.len();
-        }
-        scan.declared
-            .splits
-            .insert(i, Self::split_name(name, particle, span));
-        scan.untyped_next = particle == Particle::With;
-        Ok(())
-    }
-
-    /// A declaring word cut after its name, each part with its own span
-    /// (byte offsets, like Span: 결과는 0..9 → 결과 0..6, 는 6..9)
-    fn split_name(name: &str, particle: Particle, span: Span) -> [ParserToken; 2] {
         let cut = span.start + name.len();
         [
             ParserToken::new(
