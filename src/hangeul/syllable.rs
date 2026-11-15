@@ -25,9 +25,23 @@ impl Syllable {
         })
     }
 
-    pub fn to_char(self) -> char {
+    pub fn char_from_number(num: i64) -> Option<char> {
+        const DIGITS: [char; 10] = ['영', '일', '이', '삼', '사', '오', '육', '칠', '팔', '구'];
+        return Some(*DIGITS.get(num as usize)?);
+    }
+
+    #[allow(dead_code)]
+    pub fn from_number(num: i64) -> Option<Syllable> {
+        Self::from_char(Self::char_from_number(num)?)
+    }
+
+    pub fn to_char(&self) -> char {
         let code = 588 * self.initial as u32 + 28 * self.vowel as u32 + self.batchim as u32;
         char::from_u32(FIRST + code).expect("jamo index out of range")
+    }
+
+    pub fn end_with_batchim(c: char) -> bool {
+        Self::from_char(c).is_some_and(|s| s.has_batchim())
     }
 
     pub fn has_batchim(self) -> bool {
