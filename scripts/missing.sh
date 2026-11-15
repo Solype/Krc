@@ -6,6 +6,8 @@
 #                  on any other branch: every issue, only what is missing
 #   --all          every issue, whatever the branch
 #   issue...       these issues, passing checks included
+# With issues given (or found from the branch), each MISS of a checks.sh also shows its program and
+# the whole stderr and exit code of the compiler on it.
 # No environment variable. Exit code: 0 when nothing is missing, 1 otherwise, 2 on a wrong argument.
 # Example: scripts/missing.sh 33 9
 #
@@ -16,7 +18,7 @@
 #   src/issue_specs.rs        `mod iN`: #[ignore] tests of what only the internals can show
 
 if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
-    sed -n '2,16p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,18p' "$0" | sed 's/^# \{0,1\}//'
     exit 0
 fi
 
@@ -67,6 +69,9 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 RESULTS="$WORK/results"
 : > "$RESULTS"
+DETAILS="$WORK/details" # one file per MISS of a checks.sh: <issue>.<label>
+mkdir "$DETAILS"
+verbose=$([ "$mode" = some ] && echo 1)
 
 issue_of() { # issue_of <path under specs/>: the number of the issue
     local base="${1#"$ROOT"/specs/}"
@@ -80,11 +85,23 @@ record() { # record <issue> <ok|MISS|ASK> <label> <reason>
 # spec, sources to the repository
 
 check() { # check <label> <helper> <args...>: one line of the report
-    local why
+    local why kr out code
     if why="$("${@:2}" 2>&1)"; then
         record "$ISSUE" ok "$1" ""
     else
         record "$ISSUE" MISS "$1" "$(tail -n 1 <<< "$why")"
+        [ -n "$verbose" ] || return 0
+        # the helper ran in a subshell: compile again to keep the program and its whole stderr
+        for kr in "${@:3}"; do
+            [[ "$kr" == *.kr && -f "$kr" ]] || continue
+            out="$("$COMPILER" "$kr" 2>&1 > /dev/null)"
+            code=$?
+            {
+                cat -n "$kr"
+                echo "--- stderr (exit $code):"
+                printf '%s\n' "${out:-(empty)}"
+            } > "$DETAILS/$ISSUE.${1//\//_}"
+        done
     fi
 }
 manual() { # manual <text>: a decision or a task no test can see, always listed
@@ -219,7 +236,6 @@ fi
 
 # --- report
 
-verbose=$([ "$mode" = some ] && echo 1)
 total_ok=0
 total_miss=0
 for dir in "${dirs[@]}"; do
@@ -236,7 +252,11 @@ for dir in "${dirs[@]}"; do
         while IFS=$'\t' read -r _ status label reason; do
             case "$status" in
                 ok) [ -z "$verbose" ] || echo "    ok    $label" ;;
-                MISS) echo "    MISS  $label${reason:+: ${reason:0:200}}" ;;
+                MISS)
+                    echo "    MISS  $label${reason:+: ${reason:0:200}}"
+                    details="$DETAILS/$n.${label//\//_}"
+                    [ ! -f "$details" ] || sed 's/^/          /' "$details"
+                    ;;
                 ASK) echo "    ASK   $label" ;;
             esac
         done < "$WORK/one"
