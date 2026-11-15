@@ -1,4 +1,4 @@
-use super::super::parser_token::{Keyword, ParserToken, ParserTokenKind, Type};
+use super::super::parser_token::{Keyword, ParserToken, ParserTokenKind, Particle, Type};
 use crate::hangeul::syllable::Syllable;
 use crate::lexer::lexer_token::{LexerToken, LexerTokenKind, Operator, Punctuation};
 use crate::lexer::span::Span;
@@ -48,22 +48,26 @@ impl PreParser<'_> {
             // it is 0, which all have one like 영; (으)로 and 의 have no rule here
             LexerTokenKind::Int(n) if is_name_particle(word).is_some() => {
                 let read = Syllable::char_from_number(n % 10)?.to_string();
-                let expected = expected_form(&read, &particle);
-                if expected != read.clone() + word {
-                    self.warnings.push(PreParseWarning::new(
-                        PreParseWarningKind::BadBatchim {
-                            found: format!("{n}{word}"),
-                            expected: format!("{n}{}", &expected[read.len()..]),
-                        },
-                        span,
-                    ));
-                }
+                self.check_batchim(&n.to_string(), &read, word, &particle, span);
             }
             LexerTokenKind::Int(_)
             | LexerTokenKind::Float(_)
             | LexerTokenKind::Str(_)
-            | LexerTokenKind::Punctuation(Punctuation::RParen)
             | LexerTokenKind::LatinWord(_) => {}
+            LexerTokenKind::Punctuation(Punctuation::RParen) => {
+                let mut pos = self.pos - 2;
+                loop {
+                    if pos == 0
+                        || self.tokens[pos].kind != LexerTokenKind::Punctuation(Punctuation::RParen)
+                    {
+                        break;
+                    }
+                    pos -= 1;
+                }
+                eprintln!("token kind now : {:?}", self.tokens[pos].kind);
+                return self.check_solo_particule(word, span, Some(&self.tokens[pos].kind));
+            }
+
             _ => return None,
         }
         Some(vec![ParserToken::new(
@@ -118,18 +122,7 @@ impl PreParser<'_> {
                 .or_else(|| is_type(stem).map(ParserTokenKind::Type))
                 .or_else(|| is_bool(stem).map(ParserTokenKind::Bool));
             if let Some(stem_kind) = stem_kind {
-                if is_name_particle(&word[stem.len()..]).is_some() {
-                    let expected = expected_form(stem, &particle);
-                    if word != expected {
-                        self.warnings.push(PreParseWarning::new(
-                            PreParseWarningKind::BadBatchim {
-                                found: format!("{word}"),
-                                expected: format!("{stem}{}", &expected[word.len()..]),
-                            },
-                            span,
-                        ));
-                    }
-                }
+                self.check_batchim(stem, stem, &word[stem.len()..], &particle, span);
                 // byte offsets, like Span: 정수를 0..9 → 정수 0..6, 를 6..9
                 let cut = span.start + stem.len();
                 return Ok(vec![
@@ -144,6 +137,29 @@ impl PreParser<'_> {
 
         // not split here: 결과 is a name, not 결 + 과, and only the declared names can tell
         whole(ParserTokenKind::Ident(word.to_string()))
+    }
+
+    /// A warning when `written`, the particle after `shown`, is not the form the 받침 of `read`
+    /// asks for: `shown` is the stem as written (42, 정수), `read` how it sounds (이, 정수)
+    pub(super) fn check_batchim(
+        &mut self,
+        shown: &str,
+        read: &str,
+        written: &str,
+        particle: &Particle,
+        span: Span,
+    ) {
+        let expected = expected_form(read, particle);
+        let form = &expected[read.len()..];
+        if written != form {
+            self.warnings.push(PreParseWarning::new(
+                PreParseWarningKind::BadBatchim {
+                    found: format!("{shown}{written}"),
+                    expected: format!("{shown}{form}"),
+                },
+                span,
+            ));
+        }
     }
 
     /// Whether the next lexer token starts a type: 정수, or 짧은 / 부호 (없는) before it. A counter

@@ -5,9 +5,8 @@ use crate::lexer::lexer_token::Punctuation;
 use crate::lexer::span::Span;
 
 use super::pre_parse_error::{PreParseError, PreParseErrorKind};
-use super::pre_parse_warning::{PreParseWarning, PreParseWarningKind};
 use super::pre_parser::PreParser;
-use super::words::{expected_form, has_particule, is_name_particle};
+use super::words::{has_particule, is_name_particle};
 
 /// The declared names: which `Ident`s declare one, then every `Ident` cut into a name and its
 /// particle
@@ -161,17 +160,7 @@ impl PreParser<'_> {
         particle: Particle,
         span: Span,
     ) -> [ParserToken; 2] {
-        let expected = expected_form(name, &particle);
-
-        if word != expected {
-            self.warnings.push(PreParseWarning::new(
-                PreParseWarningKind::BadBatchim {
-                    found: word.to_string(),
-                    expected,
-                },
-                span,
-            ));
-        }
+        self.check_batchim(name, name, &word[name.len()..], &particle, span);
 
         let cut = span.start + name.len();
         [

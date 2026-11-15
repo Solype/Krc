@@ -179,10 +179,8 @@ pub(super) fn is_counter(word: &str) -> Option<usize> {
 /// `word` followed by the form of `particle` its last syllable takes: 나 → 나를, 끝 → 끝을.
 /// In a pair of NAME_PARTICULES, the first form is the one after a 받침 (을/를, 이에요/예요)
 pub(super) fn expected_form(word: &str, particle: &Particle) -> String {
-    let filtered: Vec<&(&str, Particle)> = NAME_PARTICULES
-        .iter()
-        .filter(|(_, p)| p == particle)
-        .collect();
+    let filtered: Vec<&(&str, Particle)> =
+        PARTICULES.iter().filter(|(_, p)| p == particle).collect();
     let form = match filtered.len() {
         1 => filtered[0].0,
         2 => {
