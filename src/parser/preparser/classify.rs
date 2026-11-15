@@ -55,17 +55,22 @@ impl PreParser<'_> {
             | LexerTokenKind::Str(_)
             | LexerTokenKind::LatinWord(_) => {}
             LexerTokenKind::Punctuation(Punctuation::RParen) => {
-                let mut pos = self.pos - 2;
-                loop {
-                    if pos == 0
-                        || self.tokens[pos].kind != LexerTokenKind::Punctuation(Punctuation::RParen)
-                    {
-                        break;
+                // the last thing read before the `)`s: (가 + 나)를 → 나, ((가 + 3))를 → 3
+                let tokens = self.tokens;
+                let last = tokens[..self.pos - 1]
+                    .iter()
+                    .rev()
+                    .find(|t| t.kind != LexerTokenKind::Punctuation(Punctuation::RParen))
+                    .map(|t| &t.kind);
+                match last {
+                    Some(LexerTokenKind::Int(_)) => {
+                        return self.check_solo_particule(word, span, last);
                     }
-                    pos -= 1;
+                    Some(LexerTokenKind::HangulWord(name)) if is_name_particle(word).is_some() => {
+                        self.check_batchim(name, name, word, &particle, span);
+                    }
+                    _ => {}
                 }
-                eprintln!("token kind now : {:?}", self.tokens[pos].kind);
-                return self.check_solo_particule(word, span, Some(&self.tokens[pos].kind));
             }
 
             _ => return None,
