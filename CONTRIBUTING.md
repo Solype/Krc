@@ -37,6 +37,11 @@ scripts/analyze.sh sample/10_gcd.o        # symbols and disassembly of an object
 
 Both `cargo test` and `scripts/run_samples.sh` must pass before a pull request.
 
+## Find an issue
+
+`scripts/get-issue.sh` lists the open issues, `--gfi` adds the "good first issue" ones, and
+`scripts/get-issue.sh <issue>` prints the details of one. It needs `gh`, logged in.
+
 ## See what an issue is missing
 
 `scripts/missing.sh` runs the specs of the open issues and lists what does not pass yet. On a
