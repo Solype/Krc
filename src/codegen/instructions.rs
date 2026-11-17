@@ -91,6 +91,8 @@ pub fn operand_kind(op: &IrOp, ctx: &Context) -> (usize, bool, bool) {
     }
 }
 
+/// `dest = src` from a 정수 to a wider one: movsxd for a signed 정수, `mov eax` (which clears the
+/// upper half) for a 부호 없는 one
 fn cast_between_two_non_float(
     dest: &VarId,
     src_op: ElfOper,
@@ -98,10 +100,10 @@ fn cast_between_two_non_float(
     src_unsigned: bool,
     ctx: &Context,
 ) -> Vec<Instruction> {
-    // on 8 bytes, the value is already in rax: a constant or a widened 1-byte 정수
     let mut instrs = vec![];
 
     match (src_size, src_unsigned) {
+        // on 8 bytes, the value is already in rax: a constant or a widened 1-byte 정수
         (8, _) => {}
         (4, false) => instrs.push(extend(ExtendOp::Movsxd, RAX, src_op, DWORD, QWORD)),
         (4, true) => instrs.push(bin(BinOp::Mov, reg(RAX), src_op, DWORD)),
@@ -146,7 +148,8 @@ fn unsigned_64_to_float(dest: &VarId, src_op: ElfOper, ctx: &Context) -> Vec<Ins
 }
 
 /// `dest = 바꾸다(src)`: cvtss2sd / cvtsd2ss between two 소수, cvtsi2sd from a 정수, cvttsd2si
-/// to a 정수 (truncated toward 0, as in C), movsxd / movzx to a wider 정수; else a copy
+/// to a 정수 (truncated toward 0, as in C), see cast_between_two_non_float to a wider 정수; else a
+/// copy
 pub fn generate_cast(dest: &VarId, src: &IrOp, ctx: &Context) -> Vec<Instruction> {
     let (src_size, src_float, src_unsigned) = operand_kind(src, ctx);
     let (dest_size, dest_float) = (dest.ty.size(), dest.ty.is_float());
@@ -183,12 +186,11 @@ pub fn generate_cast(dest: &VarId, src: &IrOp, ctx: &Context) -> Vec<Instruction
         (true, true) => (ConvOp::Cvtsd2ss, XMM0, None),
         (false, true) if dest_size == 8 => (ConvOp::Cvtsi2sd, XMM0, Some(Size::from(src_size))),
         (false, true) => (ConvOp::Cvtsi2ss, XMM0, Some(Size::from(src_size))),
-        // shortcut: a 1-byte 정수 destination is not done (cvt writes 4 or 8 bytes), add it with 논리
+        // cvt writes 4 or 8 bytes: a 1-byte 정수 is converted on 4, the mov below stores its low byte
         (true, false) if src_size == 8 => {
             (ConvOp::Cvttsd2si, RAX, Some(Size::from(dest_size.max(4))))
         }
         (true, false) => (ConvOp::Cvttss2si, RAX, Some(Size::from(dest_size.max(4)))),
-        // shortcut: sign-extended as a signed 정수, movzx / mov eax for a 부호 없는 one
         (false, false) => {
             instrs.extend(cast_between_two_non_float(
                 dest,

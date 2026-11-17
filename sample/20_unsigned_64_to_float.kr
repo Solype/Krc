@@ -1,5 +1,8 @@
-// #2: 2^63 as a 부호 없는 정수 stays positive as a 소수 (cvtsi2sd alone reads it as signed).
-// `echo $?` prints 0 after the run.
+/*
+ * 20_unsigned_64_to_float.kr: 2^63 as a 부호 없는 정수 stays positive as a 소수 (issue #2):
+ * cvtsi2sd alone reads it as signed, so it is halved, converted, then doubled.
+ * `echo $?` prints 0 after the run.
+ */
 
 외부 정수를 반환하는 printf(문자 주소 형식, …)
 
