@@ -98,10 +98,77 @@ pub fn operand_kind(op: &IrOp, ctx: &Context) -> (usize, bool, bool) {
     }
 }
 
+fn cast_between_two_non_float(
+    dest: &VarId,
+    src_op: ElfOper,
+    src_size: usize,
+    src_unsigned: bool,
+    ctx: &Context,
+) -> Vec<Instruction> {
+    // on 8 bytes, the value is already in rax: a constant or a widened 1-byte 정수
+    let mut instrs = vec![];
+
+    match (src_size, src_unsigned) {
+        (8, _) => {}
+        (4, false) => instrs.push(Instruction::Extend {
+            op: ExtendOp::Movsxd,
+            dst: RAX,
+            src: src_op,
+            src_size: Some(Size::U32),
+            size: Some(Size::U64),
+        }),
+        (4, true) => instrs.push(Instruction::Binary {
+            op: BinOp::Mov,
+            dst: ElfOper::Reg(RAX),
+            src: src_op,
+            size: Some(Size::U32),
+        }),
+        _ => unimplemented!(),
+    }
+    instrs.push(Instruction::Binary {
+        op: BinOp::Mov,
+        dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
+        src: ElfOper::Reg(RAX),
+        size: var_size(dest),
+    });
+    instrs
+}
+
+/// cvtsi2sd reads a signed 정수: a 부호 없는 one ≥ 2^63 is halved, its lost bit kept in bit 0 so
+/// it still rounds right, converted, then doubled, as gcc does
+fn unsigned_64_to_float(dest: &VarId, src_op: ElfOper, ctx: &Context) -> Vec<Instruction> {
+    use crate::elf::instructions::{LabelId, ShiftOp};
+    use crate::samples::helpers::{bin, convert, imm, jcc, jmp, label, reg, shift};
+    let (big, done) = (LabelId::new(), LabelId::new());
+    let cvt = if dest.ty.size() == 8 {
+        ConvOp::Cvtsi2sd
+    } else {
+        ConvOp::Cvtsi2ss
+    };
+    let (q, f) = (Some(Size::U64), var_size(dest));
+    let dest_op = convert_operand(&IrOp::Var(dest.clone()), ctx);
+    vec![
+        bin(BinOp::Mov, reg(RAX), src_op, q),
+        bin(BinOp::Test, reg(RAX), reg(RAX), q),
+        jcc(ConditionCode::S, big),
+        convert(cvt, XMM0, reg(RAX), q),
+        jmp(done),
+        label(big),
+        bin(BinOp::Mov, reg(RCX), reg(RAX), q),
+        shift(ShiftOp::Shr, reg(RCX), imm(1), q),
+        bin(BinOp::And, reg(RAX), imm(1), q),
+        bin(BinOp::Or, reg(RCX), reg(RAX), q),
+        convert(cvt, XMM0, reg(RCX), q),
+        bin(BinOp::AddF, reg(XMM0), reg(XMM0), f),
+        label(done),
+        bin(BinOp::StoreF, dest_op, reg(XMM0), f),
+    ]
+}
+
 /// `dest = 바꾸다(src)`: cvtss2sd / cvtsd2ss between two 소수, cvtsi2sd from a 정수, cvttsd2si
 /// to a 정수 (truncated toward 0, as in C), movsxd / movzx to a wider 정수; else a copy
 pub fn generate_cast(dest: &VarId, src: &IrOp, ctx: &Context) -> Vec<Instruction> {
-    let (src_size, src_float, _src_unsigned) = operand_kind(src, ctx);
+    let (src_size, src_float, src_unsigned) = operand_kind(src, ctx);
     let (dest_size, dest_float) = (dest.ty.size(), dest.ty.is_float());
     let same_kind = src_float == dest_float && (src_size == dest_size || !dest_float);
     // to a smaller 정수, an address or the same type: the low bytes, as a copy sized by dest
@@ -133,32 +200,29 @@ pub fn generate_cast(dest: &VarId, src: &IrOp, ctx: &Context) -> Vec<Instruction
         });
         (src_op, src_size) = (ElfOper::Reg(RAX), 8);
     }
+    if !src_float && dest_float && src_unsigned && src_size == 8 {
+        instrs.extend(unsigned_64_to_float(dest, src_op, ctx));
+        return instrs;
+    }
     let (op, reg, size) = match (src_float, dest_float) {
         (true, true) if dest_size == 8 => (ConvOp::Cvtss2sd, XMM0, None),
         (true, true) => (ConvOp::Cvtsd2ss, XMM0, None),
         (false, true) if dest_size == 8 => (ConvOp::Cvtsi2sd, XMM0, Some(Size::from(src_size))),
         (false, true) => (ConvOp::Cvtsi2ss, XMM0, Some(Size::from(src_size))),
         // shortcut: a 1-byte 정수 destination is not done (cvt writes 4 or 8 bytes), add it with 논리
-        (true, false) if src_size == 8 => (ConvOp::Cvttsd2si, RAX, var_size(dest)),
-        (true, false) => (ConvOp::Cvttss2si, RAX, var_size(dest)),
+        (true, false) if src_size == 8 => {
+            (ConvOp::Cvttsd2si, RAX, Some(Size::from(dest_size.max(4))))
+        }
+        (true, false) => (ConvOp::Cvttss2si, RAX, Some(Size::from(dest_size.max(4)))),
         // shortcut: sign-extended as a signed 정수, movzx / mov eax for a 부호 없는 one
         (false, false) => {
-            // on 8 bytes, the value is already in rax: a constant or a widened 1-byte 정수
-            if src_size != 8 {
-                instrs.push(Instruction::Extend {
-                    op: ExtendOp::Movsxd,
-                    dst: RAX,
-                    src: src_op,
-                    src_size: Some(Size::U32),
-                    size: Some(Size::U64),
-                });
-            }
-            instrs.push(Instruction::Binary {
-                op: BinOp::Mov,
-                dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-                src: ElfOper::Reg(RAX),
-                size: var_size(dest),
-            });
+            instrs.extend(cast_between_two_non_float(
+                dest,
+                src_op,
+                src_size,
+                src_unsigned,
+                ctx,
+            ));
             return instrs;
         }
     };
