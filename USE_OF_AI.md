@@ -13,7 +13,7 @@ through Claude Code).
 - **Exception**: the commits `fc1447c`, `efaad85` and `d1c847c` (October 9) were made by the AI,
   but without the `Co-Authored-By` line, at my request. Their content is detailed below. The
   same goes for the commits of October 15 (`996c222` to `41000ea`), October 20 (from `7c222ba`)
-  and November 6 (from `f2adc0a`).
+  and November 6 (from `f2adc0a`), and of November 8 to 17.
 - **Limits**:
   - the AI sessions of October 2 to 4 are no longer available: for that period, only the
     `Co-Authored-By` line counts;
@@ -32,8 +32,8 @@ through Claude Code).
 | Grammar, FIRST, LR(1) table, parser, tree, AST (October 5 to 9) | Me and AI: the grammar and FIRST by the AI, on my `ParserProduction` struct; detail below |
 | Converter, the semantic analysis (`src/converter`, October 12 to 15) | Shared: detail below |
 | IR and code generation (`src/converter/ir`, `src/codegen`, October 16 to 31) | Mostly me; the AI helped complete the structs of the IR: detail below |
-| Sample programs (`src/samples`), README | Me |
-| Every unit test and the encoding edge cases they revealed, every macro (`elf_derive`, `rule!` and `term!`), the command line (`-x`, several files, errors) | AI |
+| Sample programs (`src/samples`, `sample/`), README | Me and AI |
+| Every test (100 %: unit tests and the specs of the issues) and the encoding edge cases they revealed, every macro (`elf_derive`, `rule!` and `term!`), the command line (`-x`, several files, errors) | AI |
 
 ## Overall share (estimate, October 20)
 
@@ -230,6 +230,13 @@ instructions. The AI helped me complete the IR structs; I wrote the rest by hand
 | Fixes of issues #4 and #12 | Me, reviewed and completed by AI |
 | Several files (issue #44), samples, specs, branch script, documentation | AI, at my request |
 | Commits, pull requests, explanations | AI |
+
+## November 8 to 17: issues #18, #17, #47 and #2
+
+| Element | Who |
+|---|---|
+| Fixes of issues #18, #17 and #2 | Me, finished and debugged by AI |
+| Fix of issue #47, assignment with `이에요` instead of `넣다` | AI, at my request |
 
 ## How I used the AI
 
