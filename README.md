@@ -112,7 +112,7 @@ cargo build --release
 - `-x` links all the `.o` with `gcc` into `a.out`.
 - `--tree` also prints the parse tree, before the AST.
 - Any error (source, unreadable file, usage, `gcc`) exits with code 1.
-- Sample programs are in `sample/` (`01_return.kr` to `16_zero.kr`), programs that must be
+- Sample programs are in `sample/` (`01_return.kr` to `20_unsigned_64_to_float.kr`), programs that must be
   refused in `sample/errors/`, and the reference program is `Proto.kr`.
 
 The demo calls an external `my_exit`, to provide at link time, for example with NASM:
@@ -143,7 +143,7 @@ symbols and the disassembly of an object file.
 | `elf_derive/` | Derive macro that writes the ELF structures |
 | `sample/` | Programs that must run (`NN_*.kr`, expected stdout in `NN_*.out`) and programs that must be refused (`errors/`) |
 | `Proto.kr` | Reference program, expected values in its comments |
-| `scripts/` | `run_samples.sh` (sample tests), `analyze.sh` (`nm` + `objdump` of a `.o`), `align_branches.sh` (rebases every branch of origin on `main`) |
+| `scripts/` | `run_samples.sh` (sample tests), `analyze.sh` (`nm` + `objdump` of a `.o`), `align_branches.sh` (rebases every branch of origin on `main`), `get-issue.sh` (open issues, or the details of one) |
 | `docs/` | Language design (`LANGUAGE_DESIGN.md`), encoder test report, LR(1) table example, and the [website](https://solype.github.io/Krc/) (`index.md`, `ko.md`, published by GitHub Pages) |
 | `README.ko.md` | This README in Korean, shorter |
 | `editors/` | Syntax highlighting for Zed, micro and tree-sitter |

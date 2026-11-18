@@ -26,6 +26,7 @@ use crate::{
 
 use crate::converter::ir::structs::Operand as IrOp;
 use crate::elf::instructions::Operand as ElfOper;
+use crate::samples::helpers::{bin, imm, jmp, reg, stack};
 
 /// The x86 instructions of one IR instruction; panics on one not done yet (Unary, Cast, Label,
 /// Jump, JumpIfNot)
@@ -45,10 +46,7 @@ fn generate_instruction(instr: &Instr, ctx: &Context) -> Vec<Instruction> {
         Instr::Cast { dest, src } => generate_cast(dest, src, ctx),
         Instr::Zero(dest) => generate_zero(dest, ctx),
         Instr::Label(lab) => vec![Instruction::Label(ctx.labels[lab.0])],
-        Instr::Jump(lab) => vec![Instruction::Ctrl {
-            op: CtrlOp::Jmp,
-            target: ElfOper::Label(ctx.labels[lab.0]),
-        }],
+        Instr::Jump(lab) => vec![jmp(ctx.labels[lab.0])],
         Instr::JumpIfNot { cond, target } => generate_jmp_if_not(cond, target, ctx),
         // _ => {
         //     println!("{:?}", instr);
@@ -75,51 +73,37 @@ fn func_prologue(func: &Function, ctx: &Context) -> Vec<Instruction> {
     let frame = (sum + 15) & !15;
 
     let mut prologue = vec![
-        Instruction::Stack {
-            op: StackOp::Push,
-            value: ElfOper::Reg(RBP),
-            size: None,
-        },
-        Instruction::Binary {
-            op: BinOp::Mov,
-            dst: ElfOper::Reg(RBP),
-            src: ElfOper::Reg(RSP),
-            size: None,
-        },
-        Instruction::Binary {
-            op: BinOp::Sub,
-            dst: ElfOper::Reg(RSP),
-            src: ElfOper::Imm(frame),
-            size: None,
-        },
+        stack(StackOp::Push, reg(RBP), None),
+        bin(BinOp::Mov, reg(RBP), reg(RSP), None),
+        bin(BinOp::Sub, reg(RSP), imm(frame), None),
     ];
     // each parameter, given in its register, goes into its case
     // shortcut: no 7th integer parameter (it comes on the stack), add it for more than 6
-    for (var, reg) in func
+    for (var, param_reg) in func
         .params
         .iter()
         .filter(|p| !p.ty.is_float())
         .zip(PARAM_REGS)
     {
-        prologue.push(Instruction::Binary {
-            op: BinOp::Mov,
-            dst: convert_operand(&IrOp::Var(var.clone()), ctx),
-            src: ElfOper::Reg(reg),
-            size: var_size(var),
-        });
+        prologue.push(bin(
+            BinOp::Mov,
+            convert_operand(&IrOp::Var(var.clone()), ctx),
+            reg(param_reg),
+            var_size(var),
+        ));
     }
-    for (var, reg) in func
+    for (var, param_reg) in func
         .params
         .iter()
         .filter(|p| p.ty.is_float())
         .zip(PARAM_FREGS)
     {
-        prologue.push(Instruction::Binary {
-            op: BinOp::StoreF,
-            dst: convert_operand(&IrOp::Var(var.clone()), ctx),
-            src: ElfOper::Reg(reg),
-            size: var_size(var),
-        });
+        prologue.push(bin(
+            BinOp::StoreF,
+            convert_operand(&IrOp::Var(var.clone()), ctx),
+            reg(param_reg),
+            var_size(var),
+        ));
     }
     prologue
 }

@@ -39,37 +39,6 @@ fn reads_on(instrs: &[Instruction], want: Size) -> bool {
     })
 }
 
-mod i2 {
-    use super::*;
-    use crate::codegen::instructions::generate_cast;
-    use crate::elf::instructions::ExtendOp;
-
-    /// No program can declare this type before #20: `부호 없는 짧은 정수` to `정수`
-    #[test]
-    #[ignore = "issue #2"]
-    fn four_byte_unsigned_is_zero_extended() {
-        let unsigned = Type::Int {
-            short: true,
-            unsigned: true,
-        };
-        let long = Type::Int {
-            short: false,
-            unsigned: false,
-        };
-        let instrs = generate_cast(&VarId::new(0, long), &var(1, unsigned), &context(None));
-        let signed = instrs.iter().any(|instr| {
-            matches!(
-                instr,
-                Instruction::Extend {
-                    op: ExtendOp::Movsxd,
-                    ..
-                }
-            )
-        });
-        assert!(!signed, "movsxd extends the sign: {instrs:?}");
-    }
-}
-
 mod i4 {
     use super::*;
     use crate::codegen::instructions::{generate_return, normal_param};

@@ -9,6 +9,7 @@ use crate::elf::instructions::{
     UnaryOp as ElfUnOp,
 };
 use crate::parser::postparser::structs::{BinaryOp, UnaryOp};
+use crate::samples::helpers::{BYTE, bin, complex, imm, reg, setcc, shift as shift_instr, unary};
 
 /// `dest = left op right` for an op that takes its source as it is (add, sub, and, or, xor):
 /// `mov rax, left ; op rax, right ; mov [dest], rax`
@@ -21,18 +22,18 @@ fn simple_operation(
 ) -> Vec<Instruction> {
     let instrs: Vec<Instruction> = vec![
         load_operand(RAX, left, ctx, var_size(dest)),
-        Instruction::Binary {
-            op: bin_op,
-            dst: ElfOper::Reg(RAX),
-            src: convert_operand(right, ctx),
-            size: var_size(dest),
-        },
-        Instruction::Binary {
-            op: BinOp::Mov,
-            dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-            src: ElfOper::Reg(RAX),
-            size: var_size(dest),
-        },
+        bin(
+            bin_op,
+            reg(RAX),
+            convert_operand(right, ctx),
+            var_size(dest),
+        ),
+        bin(
+            BinOp::Mov,
+            convert_operand(&IrOp::Var(dest.clone()), ctx),
+            reg(RAX),
+            var_size(dest),
+        ),
     ];
     instrs
 }
@@ -48,18 +49,18 @@ fn float_operation(
 ) -> Vec<Instruction> {
     vec![
         load_operand(XMM0, left, ctx, var_size(dest)),
-        Instruction::Binary {
-            op: bin_op,
-            dst: ElfOper::Reg(XMM0),
-            src: convert_operand(right, ctx),
-            size: var_size(dest),
-        },
-        Instruction::Binary {
-            op: BinOp::StoreF,
-            dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-            src: ElfOper::Reg(XMM0),
-            size: var_size(dest),
-        },
+        bin(
+            bin_op,
+            reg(XMM0),
+            convert_operand(right, ctx),
+            var_size(dest),
+        ),
+        bin(
+            BinOp::StoreF,
+            convert_operand(&IrOp::Var(dest.clone()), ctx),
+            reg(XMM0),
+            var_size(dest),
+        ),
     ]
 }
 
@@ -80,52 +81,41 @@ fn division(
         return vec![
             load_operand(RAX, left, ctx, size),
             load_operand(RCX, right, ctx, size),
-            Instruction::Binary {
-                op: BinOp::Xor,
-                dst: Reg(RDX),
-                src: Reg(RDX),
+            bin(BinOp::Xor, Reg(RDX), Reg(RDX), size),
+            complex(ComplexBinOp::Div, ElfOper::NoOperand, Reg(RCX), None, size),
+            bin(
+                BinOp::Mov,
+                convert_operand(&IrOp::Var(dest.clone()), ctx),
+                Reg(result),
                 size,
-            },
-            Instruction::ComplexBinary {
-                op: ComplexBinOp::Div,
-                dst: ElfOper::NoOperand,
-                src: Reg(RCX),
-                extra: None,
-                size,
-            },
-            Instruction::Binary {
-                op: BinOp::Mov,
-                dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-                src: Reg(result),
-                size,
-            },
+            ),
         ];
     }
     vec![
         load_operand(RAX, left, ctx, var_size(dest)),
         load_operand(RCX, right, ctx, var_size(dest)),
-        Instruction::Unary {
-            op: if dest.ty.size() == 4 {
+        unary(
+            if dest.ty.size() == 4 {
                 ElfUnOp::Cdq
             } else {
                 ElfUnOp::Cqo
             },
-            dst: ElfOper::NoOperand,
-            size: var_size(dest),
-        },
-        Instruction::ComplexBinary {
-            op: ComplexBinOp::Idiv,
-            dst: ElfOper::NoOperand,
-            src: ElfOper::Reg(RCX),
-            extra: None,
-            size: var_size(dest),
-        },
-        Instruction::Binary {
-            op: BinOp::Mov,
-            dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-            src: ElfOper::Reg(result),
-            size: var_size(dest),
-        },
+            ElfOper::NoOperand,
+            var_size(dest),
+        ),
+        complex(
+            ComplexBinOp::Idiv,
+            ElfOper::NoOperand,
+            reg(RCX),
+            None,
+            var_size(dest),
+        ),
+        bin(
+            BinOp::Mov,
+            convert_operand(&IrOp::Var(dest.clone()), ctx),
+            reg(result),
+            var_size(dest),
+        ),
     ]
 }
 
@@ -136,19 +126,13 @@ fn multiplication(dest: &VarId, left: &IrOp, right: &IrOp, ctx: &Context) -> Vec
     vec![
         load_operand(RAX, left, ctx, var_size(dest)),
         load_operand(RCX, right, ctx, var_size(dest)),
-        Instruction::ComplexBinary {
-            op: ComplexBinOp::Imul,
-            dst: ElfOper::Reg(RAX),
-            src: ElfOper::Reg(RCX),
-            extra: None,
-            size: var_size(dest),
-        },
-        Instruction::Binary {
-            op: BinOp::Mov,
-            dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-            src: ElfOper::Reg(RAX),
-            size: var_size(dest),
-        },
+        complex(ComplexBinOp::Imul, reg(RAX), reg(RCX), None, var_size(dest)),
+        bin(
+            BinOp::Mov,
+            convert_operand(&IrOp::Var(dest.clone()), ctx),
+            reg(RAX),
+            var_size(dest),
+        ),
     ]
 }
 
@@ -163,18 +147,13 @@ fn shift(
     vec![
         load_operand(RAX, left, ctx, var_size(dest)),
         load_operand(RCX, right, ctx, var_size(dest)),
-        Instruction::Shift {
-            op: shift_op,
-            dst: ElfOper::Reg(RAX),
-            src: ElfOper::Reg(RCX),
-            size: var_size(dest),
-        },
-        Instruction::Binary {
-            op: BinOp::Mov,
-            dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-            src: ElfOper::Reg(RAX),
-            size: var_size(dest),
-        },
+        shift_instr(shift_op, reg(RAX), reg(RCX), var_size(dest)),
+        bin(
+            BinOp::Mov,
+            convert_operand(&IrOp::Var(dest.clone()), ctx),
+            reg(RAX),
+            var_size(dest),
+        ),
     ]
 }
 
@@ -207,52 +186,33 @@ fn comparison(
     let mut instrs = vec![
         load_operand(a, left, ctx, size),
         load_operand(b, right, ctx, size),
-        Instruction::Binary {
-            op: if is_float { BinOp::UcomiF } else { BinOp::Cmp },
-            dst: ElfOper::Reg(a),
-            src: ElfOper::Reg(b),
+        bin(
+            if is_float { BinOp::UcomiF } else { BinOp::Cmp },
+            reg(a),
+            reg(b),
             size,
-        },
-        Instruction::SetCC {
-            op: cc,
-            dst: ElfOper::Reg(RAX),
-        },
+        ),
+        setcc(cc, reg(RAX)),
     ];
     if is_float {
         match cc {
             ConditionCode::E => {
-                instrs.push(Instruction::SetCC {
-                    op: ConditionCode::NP,
-                    dst: ElfOper::Reg(RCX),
-                });
-                instrs.push(Instruction::Binary {
-                    op: BinOp::And,
-                    dst: ElfOper::Reg(RAX),
-                    src: ElfOper::Reg(RCX),
-                    size: Some(Size::U8),
-                });
+                instrs.push(setcc(ConditionCode::NP, reg(RCX)));
+                instrs.push(bin(BinOp::And, reg(RAX), reg(RCX), BYTE));
             }
             ConditionCode::NE => {
-                instrs.push(Instruction::SetCC {
-                    op: ConditionCode::P,
-                    dst: ElfOper::Reg(RCX),
-                });
-                instrs.push(Instruction::Binary {
-                    op: BinOp::Or,
-                    dst: ElfOper::Reg(RAX),
-                    src: ElfOper::Reg(RCX),
-                    size: Some(Size::U8),
-                });
+                instrs.push(setcc(ConditionCode::P, reg(RCX)));
+                instrs.push(bin(BinOp::Or, reg(RAX), reg(RCX), BYTE));
             }
             _ => {}
         }
     }
-    instrs.push(Instruction::Binary {
-        op: BinOp::Mov,
-        dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-        src: ElfOper::Reg(RAX),
-        size: var_size(dest),
-    });
+    instrs.push(bin(
+        BinOp::Mov,
+        convert_operand(&IrOp::Var(dest.clone()), ctx),
+        reg(RAX),
+        var_size(dest),
+    ));
     instrs
 }
 
@@ -310,47 +270,29 @@ pub fn generate_unary(dest: &VarId, op: &UnaryOp, src: &IrOp, ctx: &Context) -> 
     let operation = match op {
         // not xorpd: its mask in memory would have to be 16 bytes, 16-byte aligned
         UnaryOp::Neg if dest.ty.is_float() => vec![
-            Instruction::Binary {
-                op: BinOp::Mov,
-                dst: ElfOper::Reg(RCX),
-                src: ElfOper::Imm(if dest.ty.size() == 4 {
+            bin(
+                BinOp::Mov,
+                reg(RCX),
+                imm(if dest.ty.size() == 4 {
                     i32::MIN as i64
                 } else {
                     i64::MIN
                 }),
-                size: var_size(dest),
-            },
-            Instruction::Binary {
-                op: BinOp::Xor,
-                dst: ElfOper::Reg(RAX),
-                src: ElfOper::Reg(RCX),
-                size: var_size(dest),
-            },
+                var_size(dest),
+            ),
+            bin(BinOp::Xor, reg(RAX), reg(RCX), var_size(dest)),
         ],
-        UnaryOp::Neg => vec![Instruction::Unary {
-            op: ElfUnOp::Neg,
-            dst: ElfOper::Reg(RAX),
-            size: var_size(dest),
-        }],
-        UnaryOp::BitNot => vec![Instruction::Unary {
-            op: ElfUnOp::Not,
-            dst: ElfOper::Reg(RAX),
-            size: var_size(dest),
-        }],
-        UnaryOp::Not => vec![Instruction::Binary {
-            op: BinOp::Xor,
-            dst: ElfOper::Reg(RAX),
-            src: ElfOper::Imm(1),
-            size: var_size(dest),
-        }],
+        UnaryOp::Neg => vec![unary(ElfUnOp::Neg, reg(RAX), var_size(dest))],
+        UnaryOp::BitNot => vec![unary(ElfUnOp::Not, reg(RAX), var_size(dest))],
+        UnaryOp::Not => vec![bin(BinOp::Xor, reg(RAX), imm(1), var_size(dest))],
     };
     let mut instrs = vec![load_operand(RAX, src, ctx, var_size(dest))];
     instrs.extend(operation);
-    instrs.push(Instruction::Binary {
-        op: BinOp::Mov,
-        dst: convert_operand(&IrOp::Var(dest.clone()), ctx),
-        src: ElfOper::Reg(RAX),
-        size: var_size(dest),
-    });
+    instrs.push(bin(
+        BinOp::Mov,
+        convert_operand(&IrOp::Var(dest.clone()), ctx),
+        reg(RAX),
+        var_size(dest),
+    ));
     instrs
 }

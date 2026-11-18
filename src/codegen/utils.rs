@@ -1,4 +1,5 @@
 use super::{generation::Context, instructions::convert_operand};
+use crate::samples::helpers::{BYTE, QWORD, bin, extend, lea};
 use crate::{
     converter::ir::structs::{Operand as IrOp, VarId},
     elf::instructions::{
@@ -18,11 +19,11 @@ pub fn load_operand(reg: Register, op: &IrOp, ctx: &Context, size: Option<Size>)
     let real_size = size.or(op.size());
 
     if let IrOp::DataAddress(id) = op {
-        return Instruction::Lea {
-            dst: reg,
-            src: ElfOper::MemoryAddress(MemAddress::symbol(&ctx.data_names[*id]).rip_relative()),
-            size: None,
-        };
+        return lea(
+            reg,
+            MemAddress::symbol(&ctx.data_names[*id]).rip_relative(),
+            None,
+        );
     }
 
     let src = convert_operand(op, ctx);
@@ -31,13 +32,7 @@ pub fn load_operand(reg: Register, op: &IrOp, ctx: &Context, size: Option<Size>)
 
     // 1 byte from memory: movzx, since `mov sil` would keep the 56 bits above
     if !reg.is_xmm() && one_byte && !is_constant {
-        return Instruction::Extend {
-            op: ExtendOp::Movzx,
-            dst: reg,
-            src,
-            src_size: Some(Size::U8),
-            size: Some(Size::U64),
-        };
+        return extend(ExtendOp::Movzx, reg, src, BYTE, QWORD);
     }
 
     // 1-byte constant: mov on 32 bits, which clears the upper half
@@ -47,15 +42,11 @@ pub fn load_operand(reg: Register, op: &IrOp, ctx: &Context, size: Option<Size>)
         real_size
     };
 
-    Instruction::Binary {
-        // not MovF: movapd reads 16 bytes and wants them 16-byte aligned
-        op: if reg.is_xmm() {
-            BinOp::LoadF
-        } else {
-            BinOp::Mov
-        },
-        dst: ElfOper::Reg(reg),
-        src,
-        size,
-    }
+    // not MovF: movapd reads 16 bytes and wants them 16-byte aligned
+    let op = if reg.is_xmm() {
+        BinOp::LoadF
+    } else {
+        BinOp::Mov
+    };
+    bin(op, ElfOper::Reg(reg), src, size)
 }

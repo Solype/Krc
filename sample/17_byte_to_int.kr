@@ -1,5 +1,7 @@
-// #2: a 바이트 is extended with zeros: 200 stays 200, not -56.
-// `echo $?` prints 1 after the run.
+/*
+ * 17_byte_to_int.kr: a 바이트 is extended with zeros (issue #2): 200 stays 200, not -56.
+ * `echo $?` prints 1 after the run.
+ */
 
 정수를 반환하는 main() {
     가는 바이트예요.
