@@ -42,22 +42,25 @@ impl<'a> TreeNode<'a> {
         }
     }
 
-    /// One line per node, indented by its depth: the left side of the rule for a branch, the
-    /// token for a leaf
+    /// One line per node, drawn like the `tree` command so siblings share a vertical guide: the
+    /// left side of the rule for a branch, the token for a leaf
     pub fn show(&self, rules: &[ParserProduction]) -> String {
         let mut lines = Vec::new();
-        self.show_lines(rules, 0, &mut lines);
+        self.show_lines(rules, "", "", &mut lines);
         lines.join("\n")
     }
 
-    fn show_lines(&self, rules: &[ParserProduction], depth: usize, lines: &mut Vec<String>) {
-        let indent = "  ".repeat(depth);
+    /// `head` goes before this node's label, `prefix` before the lines of its children
+    fn show_lines(&self, rules: &[ParserProduction], head: &str, prefix: &str, lines: &mut Vec<String>) {
         match self {
-            TreeNode::Leaf(token) => lines.push(format!("{indent}{:?}", token.kind)),
+            TreeNode::Leaf(token) => lines.push(format!("{head}{:?}", token.kind)),
             TreeNode::Branch { rule, children } => {
-                lines.push(format!("{indent}{:?}", rules[*rule].left));
-                for child in children {
-                    child.show_lines(rules, depth + 1, lines);
+                lines.push(format!("{head}{:?}", rules[*rule].left));
+                for (i, child) in children.iter().enumerate() {
+                    let last = i + 1 == children.len();
+                    let head = format!("{prefix}{}", if last { "└── " } else { "├── " });
+                    let next = format!("{prefix}{}", if last { "    " } else { "│   " });
+                    child.show_lines(rules, &head, &next, lines);
                 }
             }
         }
