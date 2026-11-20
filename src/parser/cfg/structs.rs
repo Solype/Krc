@@ -49,6 +49,10 @@ pub enum NTerm {
     /// `개수는 0이에요`, `고정된 합은 3과 4를 더한 값이에요`; also a reassignment when the name
     /// is already declared
     VariableDeclaration,
+    /// `[위치]는 20이에요`, `가[2]는 1이에요`: writes through an address
+    PlaceAssignment,
+    /// What `PlaceAssignment` writes to: `[EXPR]` or `PRIMARY[EXPR]`, never a bare name
+    Place,
     /// What is before `이에요/예요`: a value, a type, or `… 더해서 제곱한 값`
     DeclarationValue,
     /// The last step of a value, before `값`: `5를 곱한`, `제곱한`
@@ -101,9 +105,9 @@ pub enum NTerm {
     AdditiveExpression,
     /// `*` `/` `%`
     MultiplicativeExpression,
-    /// `-` `~`
+    /// `-` `~` `&`
     UnaryExpression,
-    /// A literal, a name, `빈 주소`, `정수의 크기`, `(EXPR)`
+    /// A literal, a name, `빈 주소`, `정수의 크기`, `(EXPR)`, `[EXPR]`, `PRIMARY[EXPR]`
     Primary,
 }
 

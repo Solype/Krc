@@ -12,6 +12,8 @@ impl Lexer<'_> {
             ')' => RParen,
             '{' => LBrace,
             '}' => RBrace,
+            '[' => LBrack,
+            ']' => RBrack,
             ',' => Comma,
             '.' if self.peek() == Some('.') && self.peek_at(1) == Some('.') => {
                 self.bump();

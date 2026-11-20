@@ -1,0 +1,13 @@
+// #6: `[address]` reads and writes through an address (`*p`), `name[i]` indexes an array.
+// `echo $?` prints 43 after the run.
+
+정수를 반환하는 main() {
+    수는 10이에요.
+    위치는 (&수)예요.
+    [위치]는 20이에요.
+    가는 정수 5개예요.
+    가[2]는 ([위치] + 2)예요.
+    가[4]는 (가[2] + 1)이에요.
+    결과는 (가[4] + 수)예요.
+    결과를 반환해요.
+}

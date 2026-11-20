@@ -29,6 +29,8 @@ pub enum Punctuation {
     RParen,
     LBrace,
     RBrace,
+    LBrack,
+    RBrack,
     Comma,
     /// `.` after a final `요` (checked by the parser)
     Dot,

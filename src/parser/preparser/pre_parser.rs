@@ -14,6 +14,7 @@ pub fn pre_parse(tokens: &[LexerToken]) -> Result<PreParsed, PreParseError> {
 }
 
 /// The pre-parser output: the tokens, and what looked suspicious on the way
+#[derive(Debug)]
 pub struct PreParsed {
     pub tokens: Vec<ParserToken>,
     pub warnings: Vec<PreParseWarning>,
@@ -107,7 +108,6 @@ impl<'a> PreParser<'a> {
         }) {
             return Err(err);
         }
-
         Ok(PreParsed {
             tokens,
             warnings: self.warnings,

@@ -54,7 +54,8 @@ impl PreParser<'_> {
             | LexerTokenKind::Float(_)
             | LexerTokenKind::Str(_)
             | LexerTokenKind::LatinWord(_) => {}
-            LexerTokenKind::Punctuation(Punctuation::RParen) => {
+            LexerTokenKind::Punctuation(Punctuation::RParen)
+            | LexerTokenKind::Punctuation(Punctuation::RBrack) => {
                 // the last thing read before the `)`s: (가 + 나)를 → 나, ((가 + 3))를 → 3
                 let tokens = self.tokens;
                 let last = tokens[..self.pos - 1]
