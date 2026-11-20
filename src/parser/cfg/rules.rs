@@ -356,3 +356,17 @@ pub const RULES: &[ParserProduction] = &[
         term!(Punctuation::RBrack),
     ),
 ];
+
+/// The textbook LL(1) expression grammar, for the parser tests. Start symbol: `E`, the left side
+/// of the first rule.
+/// E → T E′, E′ → + T E′ | ε, T → F T′, T′ → * F T′ | ε, F → id | ( E )
+pub const TEST_RULES: &[ParserProduction] = &[
+    rule!(E => NTerm(T), NTerm(EPrime)),
+    rule!(EPrime => term!(Operator::Plus), NTerm(T), NTerm(EPrime)),
+    rule!(EPrime =>),
+    rule!(T => NTerm(F), NTerm(TPrime)),
+    rule!(TPrime => term!(Operator::Star), NTerm(F), NTerm(TPrime)),
+    rule!(TPrime =>),
+    rule!(F => term!(Name)),
+    rule!(F => term!(Punctuation::LParen), NTerm(E), term!(Punctuation::RParen)),
+];

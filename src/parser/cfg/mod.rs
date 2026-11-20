@@ -1,10 +1,7 @@
-pub mod first;
+// The grammar only: the parser is being rewritten by hand
+#[allow(dead_code)]
 pub mod parser;
-pub mod parsing_table;
+#[allow(dead_code)]
 pub mod rules;
+#[allow(dead_code)]
 pub mod structs;
-
-#[cfg(test)]
-mod first_tests;
-#[cfg(test)]
-mod parser_tests;

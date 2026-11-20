@@ -1,5 +1,5 @@
 pub mod parser_token;
-// Only the conversion and its display are called from main
+// The structures only: the post-parser is being rewritten by hand
 #[allow(dead_code)]
 pub mod postparser;
 pub mod preparser;

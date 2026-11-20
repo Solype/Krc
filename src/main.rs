@@ -16,8 +16,8 @@ use std::{env, process};
 
 use converter::converter::Converter;
 use parser::cfg::parser::Parser;
-use parser::cfg::rules::RULES;
-use parser::postparser::postparser::convert_to_ast_tree;
+use parser::cfg::rules::TEST_RULES;
+use parser::postparser::structs::Program;
 
 const OUTPUT: &str = "output.elf";
 
@@ -39,7 +39,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
         Command::Compile(args) => args,
     };
-    let main_parser = Parser::new(RULES);
+    let main_parser = Parser::new(TEST_RULES);
     let mut objects = Vec::new();
     for path in &args.paths {
         objects.push(compile(&args, path, &main_parser)?);
@@ -52,6 +52,8 @@ fn run() -> Result<(), Box<dyn Error>> {
 }
 
 /// Compiles `path` (dir/file.kr) into dir/file.o, and gives the path of the .o
+// shortcut: no parser yet, the steps after it are unreachable; drop it with the new parser
+#[allow(unreachable_code, unused_variables)]
 fn compile(args: &Args, path: &str, main_parser: &Parser) -> Result<String, Box<dyn Error>> {
     let source = read_source(&args.program, path)?;
     let tokens = lexer::tokenize(&source).map_err(|err| {
@@ -66,20 +68,7 @@ fn compile(args: &Args, path: &str, main_parser: &Parser) -> Result<String, Box<
         let (line, col) = warning.span.line_col(&source);
         eprintln!("{}:{line}:{col}: warning: {warning}", path);
     }
-    let tree = main_parser.parse(&pre_parsed.tokens).map_err(|token| {
-        let (line, col) = token.span.line_col(&source);
-        format!(
-            "{}:{line}:{col}: syntax error: unexpected {:?}",
-            path, token.kind
-        )
-    })?;
-    if args.tree {
-        println!("{}", tree.show(RULES));
-    }
-    let ast = convert_to_ast_tree(&tree).map_err(|err| {
-        let (line, col) = err.span.line_col(&source);
-        format!("{}:{line}:{col}: {err}", path)
-    })?;
+    let ast: Program = todo!("the parser and the post-parser are being rewritten by hand");
     print!("{ast}");
     // in several files, only one has the main
     let ir = Converter::new(&ast, args.paths.len() == 1)

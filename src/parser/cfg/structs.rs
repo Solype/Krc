@@ -109,6 +109,15 @@ pub enum NTerm {
     UnaryExpression,
     /// A literal, a name, `빈 주소`, `정수의 크기`, `(EXPR)`, `[EXPR]`, `PRIMARY[EXPR]`
     Primary,
+
+    // The non-terminals of `TEST_RULES`, the textbook LL(1) expression grammar
+    E,
+    /// E′
+    EPrime,
+    T,
+    /// T′
+    TPrime,
+    F,
 }
 
 /// A terminal is a token category, without the token's value: `Name` matches any name
