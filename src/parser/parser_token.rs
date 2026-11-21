@@ -1,3 +1,6 @@
+use std::hash::{Hash, Hasher};
+use std::mem::discriminant;
+
 use crate::lexer::lexer_token::{Operator, Punctuation};
 use crate::lexer::span::Span;
 
@@ -35,6 +38,16 @@ pub enum ParserTokenKind {
 
     /// End of the source, span `len..len`
     Eof,
+}
+
+// shortcut: `Float(NaN) != Float(NaN)` breaks `Eq`; the lexer never makes a NaN literal
+impl Eq for ParserTokenKind {}
+
+/// Hashes the variant only: equal tokens still get equal hashes, and `f64` has no `Hash`
+impl Hash for ParserTokenKind {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        discriminant(self).hash(state);
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
