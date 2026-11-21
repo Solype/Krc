@@ -11,8 +11,4 @@ pub mod follows;
 mod display;
 
 #[cfg(test)]
-mod display_tests;
-#[cfg(test)]
-mod firsts_tests;
-#[cfg(test)]
-mod follows_tests;
+mod test;

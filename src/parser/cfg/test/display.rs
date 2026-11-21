@@ -1,8 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
-use super::firsts::{FirstDerivation, FirstDerivationSet};
-use super::follows::{FollowDerivation, FollowDerivationSet};
-use super::structs::NTerm;
+use crate::parser::cfg::firsts::{FirstDerivation, FirstDerivationSet};
+use crate::parser::cfg::follows::{FollowDerivation, FollowDerivationSet};
+use crate::parser::cfg::structs::NTerm;
 use crate::lexer::lexer_token::{Operator, Punctuation};
 use crate::parser::parser_token::{Ending, ParserTokenKind};
 

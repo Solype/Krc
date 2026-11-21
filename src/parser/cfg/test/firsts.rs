@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
-use super::firsts::FirstPairBuilder;
-use super::rules::TEST_RULES;
-use super::structs::NTerm;
+use crate::parser::cfg::firsts::FirstPairBuilder;
+use crate::parser::cfg::rules::TEST_RULES;
+use crate::parser::cfg::structs::NTerm;
 use crate::lexer::lexer_token::{Operator, Punctuation};
 use crate::parser::parser_token::ParserTokenKind;
 
@@ -31,7 +31,7 @@ fn firsts_of_test_rules() {
 /// A → B C is nullable only when B and C both are, a rule with a terminal never is
 #[test]
 fn nullable_needs_every_symbol_nullable() {
-    use super::structs::{ParserNode, ParserProduction};
+    use crate::parser::cfg::structs::{ParserNode, ParserProduction};
     static RULES: &[ParserProduction] = &[
         // E → T F : F is not nullable, so E is not
         ParserProduction {
@@ -68,7 +68,7 @@ fn nullable_needs_every_symbol_nullable() {
 /// E → T $, T → ε | Int : FIRST(E) reads past the nullable T, and E is not nullable
 #[test]
 fn first_reads_past_a_nullable_symbol() {
-    use super::structs::{ParserNode, ParserProduction};
+    use crate::parser::cfg::structs::{ParserNode, ParserProduction};
     static RULES: &[ParserProduction] = &[
         ParserProduction {
             left: NTerm::E,

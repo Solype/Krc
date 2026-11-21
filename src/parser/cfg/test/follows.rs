@@ -2,10 +2,10 @@
 //! FOLLOW(E) = FOLLOW(E′) = { ), $ }, FOLLOW(T) = FOLLOW(T′) = { +, ), $ }, FOLLOW(F) = { *, +, ), $ }
 use std::collections::HashSet;
 
-use super::firsts::FirstPairBuilder;
-use super::follows::FollowsDerivationBuilder;
-use super::rules::TEST_RULES;
-use super::structs::NTerm;
+use crate::parser::cfg::firsts::FirstPairBuilder;
+use crate::parser::cfg::follows::FollowsDerivationBuilder;
+use crate::parser::cfg::rules::TEST_RULES;
+use crate::parser::cfg::structs::NTerm;
 use crate::lexer::lexer_token::{Operator, Punctuation};
 use crate::parser::parser_token::ParserTokenKind;
 

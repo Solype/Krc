@@ -18,6 +18,8 @@ a.out
 *.o
 
 test*
+# the unit test folders of the source stay tracked
+!src/**/test/
 
 *todo*
 
