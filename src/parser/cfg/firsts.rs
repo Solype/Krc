@@ -12,12 +12,17 @@ use super::structs::NTerm;
 #[derive(Debug, Default)]
 pub struct FirstDerivation(pub HashSet<ParserTokenKind>);
 
-pub struct FirstDerivationSet(pub HashMap<NTerm, FirstDerivation>);
+#[derive(Debug, Default)]
+pub struct FirstDerivationSet {
+    pub set: HashMap<NTerm, FirstDerivation>,
+    pub nullable: HashSet<NTerm>,
+}
 
 #[derive(Debug, Default)]
 pub struct FirstPairBuilder {
     pub eq_statements: HashSet<(NTerm, NTerm)>,
     pub first_derivatives: HashMap<NTerm, FirstDerivation>,
+    pub nullable: HashSet<NTerm>,
 }
 
 impl FirstPairBuilder {
@@ -25,9 +30,14 @@ impl FirstPairBuilder {
     /// chains (E → T → F) and loops (A → B, B → A) both end
     fn resolve_eq_statements(&mut self) {
         let mut changed = true;
+
         while changed {
             changed = false;
             for (left, right) in self.eq_statements.iter() {
+                if self.nullable.contains(right) {
+                    self.nullable.insert(*left);
+                }
+
                 // copied first: the map cannot be borrowed twice at once
                 let source = self
                     .first_derivatives
@@ -45,6 +55,7 @@ impl FirstPairBuilder {
     fn process_first_derivative(&mut self, rules: &'static [ParserProduction]) {
         for rule in rules {
             if rule.right.len() == 0 {
+                self.nullable.insert(rule.left);
                 continue;
             }
             match &rule.right[0] {
@@ -64,6 +75,9 @@ impl FirstPairBuilder {
 
         me.process_first_derivative(rules);
         me.resolve_eq_statements();
-        return FirstDerivationSet(me.first_derivatives);
+        return FirstDerivationSet {
+            set: me.first_derivatives,
+            nullable: me.nullable,
+        };
     }
 }

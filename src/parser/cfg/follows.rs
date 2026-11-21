@@ -22,16 +22,18 @@ pub struct FollowsDerivationBuilder {
 }
 
 impl FollowsDerivationBuilder {
-    fn process_follows_from_1_rule(
+    fn process_follows_for_1_nterm(
         &mut self,
+        i: usize,
+        nterm: &NTerm,
         firsts: &FirstDerivationSet,
         rule: &ParserProduction,
     ) {
-        for (i, node) in rule.right.iter().enumerate() {
-            let ParserNode::NTerm(nterm) = node else {
-                continue;
-            };
-            match rule.right.get(i + 1) {
+        let mut j = 1;
+        let mut run = false;
+
+        loop {
+            match rule.right.get(i + j) {
                 // A → … B : FOLLOW(B) gets FOLLOW(A)
                 None => {
                     self.eq_statements.insert((*nterm, rule.left));
@@ -46,7 +48,10 @@ impl FollowsDerivationBuilder {
                 }
                 // B C : FOLLOW(B) gets FIRST(C)
                 Some(ParserNode::NTerm(next)) => {
-                    let Some(firsts_of_next) = firsts.0.get(next) else {
+                    if firsts.nullable.contains(next) {
+                        run = true
+                    }
+                    let Some(firsts_of_next) = firsts.set.get(next) else {
                         unimplemented!();
                     };
                     self.follow_derivatives
@@ -55,6 +60,12 @@ impl FollowsDerivationBuilder {
                         .0
                         .extend(firsts_of_next.0.clone());
                 }
+            }
+            if !run {
+                break;
+            } else {
+                j += 1;
+                run = false;
             }
         }
     }
@@ -65,7 +76,32 @@ impl FollowsDerivationBuilder {
         firsts: &FirstDerivationSet,
     ) {
         for rule in rules {
-            self.process_follows_from_1_rule(firsts, rule);
+            for (i, node) in rule.right.iter().enumerate() {
+                let ParserNode::NTerm(nterm) = node else {
+                    continue;
+                };
+                self.process_follows_for_1_nterm(i, nterm, firsts, rule);
+            }
+        }
+    }
+
+    fn resolve_eq_statement(&mut self) {
+        let mut changed = true;
+
+        while changed {
+            changed = false;
+            for (left, right) in self.eq_statements.iter() {
+                // copied first: the map cannot be borrowed twice at once
+                let source = self
+                    .follow_derivatives
+                    .get(right)
+                    .map(|first| first.0.clone())
+                    .unwrap_or_default();
+                let target = &mut &mut self.follow_derivatives.entry(*left).or_default().0;
+                let before = target.len();
+                target.extend(source);
+                changed |= target.len() != before;
+            }
         }
     }
 
@@ -83,6 +119,7 @@ impl FollowsDerivationBuilder {
             .insert(ParserTokenKind::Eof);
 
         me.process_follows_derivative(rules, firsts);
+        me.resolve_eq_statement();
         FollowDerivationSet(me.follow_derivatives)
     }
 }

@@ -26,17 +26,28 @@ fn an_empty_set() {
 
 #[test]
 fn first_sets_follow_the_order_of_nterm() {
-    let firsts = FirstDerivationSet(HashMap::from([
-        (
-            NTerm::F,
-            FirstDerivation(HashSet::from([ParserTokenKind::Name(String::new())])),
-        ),
-        (
-            NTerm::E,
-            FirstDerivation(HashSet::from([ParserTokenKind::Int(0)])),
-        ),
-    ]));
-    assert_eq!(firsts.to_string(), "E: {Int}\nF: {Name}\n");
+    let firsts = FirstDerivationSet {
+        set: HashMap::from([
+            (
+                NTerm::F,
+                FirstDerivation(HashSet::from([ParserTokenKind::Name(String::new())])),
+            ),
+            (
+                NTerm::E,
+                FirstDerivation(HashSet::from([ParserTokenKind::Int(0)])),
+            ),
+        ]),
+        nullable: HashSet::from([NTerm::TPrime, NTerm::EPrime]),
+    };
+    assert_eq!(
+        firsts.to_string(),
+        "E: {Int}\nF: {Name}\nnullable: {EPrime, TPrime}\n"
+    );
+}
+
+#[test]
+fn no_nullable() {
+    assert_eq!(FirstDerivationSet::default().to_string(), "nullable: {}\n");
 }
 
 #[test]

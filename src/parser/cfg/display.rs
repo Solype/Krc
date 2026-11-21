@@ -19,10 +19,15 @@ impl fmt::Display for FollowDerivation {
     }
 }
 
-/// One line per non-terminal, in the order of `NTerm`: `E: {Name, Punctuation(LParen)}`
+/// One line per non-terminal, in the order of `NTerm`: `E: {Name, Punctuation(LParen)}`, then
+/// `nullable: {EPrime, TPrime}`
 impl fmt::Display for FirstDerivationSet {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        lines(f, &self.0)
+        lines(f, &self.set)?;
+        let mut nullable: Vec<&NTerm> = self.nullable.iter().collect();
+        nullable.sort_by_key(|nterm| **nterm as usize);
+        let names: Vec<String> = nullable.iter().map(|nterm| format!("{nterm:?}")).collect();
+        writeln!(f, "nullable: {{{}}}", names.join(", "))
     }
 }
 

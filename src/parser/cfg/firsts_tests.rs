@@ -13,16 +13,17 @@ fn firsts_of_test_rules() {
         ParserTokenKind::Name(String::new()),
         ParserTokenKind::Punctuation(Punctuation::LParen),
     ]);
-    assert_eq!(firsts.0[&NTerm::E].0, id_or_paren);
-    assert_eq!(firsts.0[&NTerm::T].0, id_or_paren);
-    assert_eq!(firsts.0[&NTerm::F].0, id_or_paren);
-    // ε is not recorded yet
+    assert_eq!(firsts.set[&NTerm::E].0, id_or_paren);
+    assert_eq!(firsts.set[&NTerm::T].0, id_or_paren);
+    assert_eq!(firsts.set[&NTerm::F].0, id_or_paren);
+    // ε is in `nullable`, not in the sets
     assert_eq!(
-        firsts.0[&NTerm::EPrime].0,
+        firsts.set[&NTerm::EPrime].0,
         HashSet::from([ParserTokenKind::Operator(Operator::Plus)])
     );
     assert_eq!(
-        firsts.0[&NTerm::TPrime].0,
+        firsts.set[&NTerm::TPrime].0,
         HashSet::from([ParserTokenKind::Operator(Operator::Star)])
     );
+    assert_eq!(firsts.nullable, HashSet::from([NTerm::EPrime, NTerm::TPrime]));
 }
