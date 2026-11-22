@@ -70,4 +70,6 @@ cd krc-v0.1.0-x86_64-linux
 
 - [소스 코드](https://github.com/Solype/Krc)
 - [릴리스](https://github.com/Solype/Krc/releases)
+- [LR 파싱 단계별 설명](lr-step-by-step.html)(영어)
+- [LR 파싱 표 만들기](lr-construction.html)(영어)
 - [AI 사용 내역](https://github.com/Solype/Krc/blob/main/USE_OF_AI.md)(영어)
