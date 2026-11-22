@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Building an LR Table</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column; the automaton growing on top, then the work in progress and the worklist, then the table filling up */
+:root {
+  --bg: #f5f6f8; --panel: #ffffff; --fg: #1b2230; --muted: #667085; --line: #d6dae2;
+  --accent: #2f5bd3; --accent-soft: #e3eafc;
+  --new: #2f855a; --new-soft: #dff3e8; --reduce: #b7791f; --reduce-soft: #fbf0dc;
+  --display: "Space Grotesk", "Inter", system-ui, sans-serif;
+  --body: "Inter", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #12151c; --panel: #1a1f29; --fg: #e6e9ef; --muted: #98a2b3; --line: #2c3442;
+  --accent: #7c9cff; --accent-soft: #233257;
+  --new: #5cc58e; --new-soft: #1b3a2b; --reduce: #e0a84a; --reduce-soft: #3a2f1a; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #12151c; --panel: #1a1f29; --fg: #e6e9ef; --muted: #98a2b3; --line: #2c3442;
+  --accent: #7c9cff; --accent-soft: #233257;
+  --new: #5cc58e; --new-soft: #1b3a2b; --reduce: #e0a84a; --reduce-soft: #3a2f1a; color-scheme: dark }
+
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 18px; }
+h1 { font-family: var(--display); font-size: 1.9rem; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-size: .78rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 10px; }
+p { margin: 0; max-width: 68ch; }
+a { color: var(--accent); }
+code { font-family: var(--mono); font-size: .9em; }
+.grammar { display: flex; flex-wrap: wrap; gap: 8px 22px; font-family: var(--mono); font-size: .92rem; }
+.grammar span { padding: 2px 8px; border-radius: 6px; transition: all .2s; }
+.grammar span.on { background: var(--reduce-soft); color: var(--reduce); font-weight: 600; }
+.grammar span b { color: var(--muted); font-weight: 400; margin-right: 6px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.scroll { overflow-x: auto; }
+.hint { color: var(--muted); font-size: .85rem; margin-top: 8px; }
+
+/* automaton, drawn by the script */
+svg { display: block; width: 100%; min-width: 640px; height: auto; }
+.box rect.frame { fill: var(--panel); stroke: var(--line); stroke-width: 1.5; }
+.box text { font-family: var(--mono); font-size: 13px; fill: var(--fg); }
+.box circle { fill: var(--bg); stroke: var(--line); }
+.box .num { fill: var(--muted); }
+.box.on rect.frame { stroke: var(--accent); stroke-width: 3; }
+.box.on circle { fill: var(--accent); stroke: var(--accent); }
+.box.on .num { fill: var(--panel); font-weight: 600; }
+.box rect.look { fill: var(--accent-soft); }
+.box rect.new { fill: var(--new-soft); }
+.edge path { fill: none; stroke: var(--muted); stroke-width: 1.5; marker-end: url(#arrow); }
+.edge text { font-family: var(--mono); font-size: 14px; font-weight: 600; fill: var(--muted); }
+.edge.on path { stroke: var(--accent); stroke-width: 3; marker-end: url(#arrow-on); }
+.edge.on text { fill: var(--accent); }
+#arrow path { fill: var(--muted); } #arrow-on path { fill: var(--accent); }
+.empty { font-family: var(--body); font-size: 14px; fill: var(--muted); }
+
+/* controls */
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+button { font: 600 .95rem var(--body); color: var(--fg); background: var(--panel); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 14px; cursor: pointer; }
+button.primary { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+button:disabled { opacity: .4; cursor: default; }
+button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.counter { color: var(--muted); font-variant-numeric: tabular-nums; margin-left: auto; }
+.bar { height: 4px; background: var(--line); border-radius: 2px; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--accent); transition: width .2s; }
+
+.row { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 18px; }
+.badge { display: inline-block; font: 600 .78rem var(--body); letter-spacing: .06em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px; margin-bottom: 8px; background: var(--line); color: var(--fg); }
+.badge.closure, .badge.goto { background: var(--accent-soft); color: var(--accent); }
+.badge.work { background: var(--new-soft); color: var(--new); }
+.badge.table { background: var(--reduce-soft); color: var(--reduce); }
+.calc { font-family: var(--mono); font-size: .9rem; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 8px; padding: 8px 10px; margin-bottom: 10px; overflow-x: auto; white-space: pre-wrap; }
+#text { min-height: 4.5em; }
+
+.work { display: flex; gap: 8px; flex-wrap: wrap; min-height: 42px; align-items: center; }
+.work span { width: 38px; height: 38px; display: grid; place-items: center; border-radius: 8px;
+  border: 1.5px solid var(--new); background: var(--new-soft); color: var(--new); font: 600 1rem var(--mono); }
+.work em { color: var(--muted); font-style: normal; }
+
+table { border-collapse: collapse; font-family: var(--mono); font-size: .92rem; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: center; }
+th { font-family: var(--body); font-weight: 600; color: var(--muted); font-size: .8rem; }
+td.hot { background: var(--reduce-soft); outline: 2px solid var(--reduce); outline-offset: -2px; font-weight: 600; }
+.split { border-left: 3px solid var(--line); }
+
+.rules { display: grid; gap: 10px; }
+.rules ol { margin: 0; padding-left: 1.3em; display: grid; gap: 8px; max-width: 72ch; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header style="display:grid; gap:8px">
+    <h1>Building an LR table step by step</h1>
+    <p>This page builds the automaton and the ACTION/GOTO tables that <a href="lr-step-by-step.html">LR parsing step by step</a> uses, from the three rules below. Step forward with <b>Next</b> or the arrow keys.</p>
+    <div class="grammar"><span id="r-0"><b>0.</b>S′ → E</span><span id="r-1"><b>1.</b>E → E + n</span><span id="r-2"><b>2.</b>E → n</span></div>
+  </header>
+
+  <section class="panel">
+    <h2>The automaton, as it grows</h2>
+    <div class="scroll"><svg id="auto" viewBox="0 0 800 320" role="img" aria-label="LR(1) automaton being built"></svg></div>
+    <p class="hint">An item <code>E → E · + n, $</code> is a rule, a dot (what is read so far) and a lookahead (the token that must follow when the rule is reduced). Blue: the items being looked at. Green: the items just added.</p>
+  </section>
+
+  <div class="bar"><i id="bar"></i></div>
+  <div class="controls">
+    <button id="prev">← Previous</button>
+    <button id="next" class="primary">Next →</button>
+    <button id="reset">Restart</button>
+    <span class="counter" id="counter"></span>
+  </div>
+
+  <div class="row">
+    <section class="panel">
+      <h2>What happens</h2>
+      <span class="badge" id="badge"></span>
+      <div class="calc" id="calc"></div>
+      <p id="text"></p>
+    </section>
+    <div style="display:grid; gap:18px; align-content:start">
+      <section class="panel">
+        <h2>Worklist (states whose transitions are still to compute)</h2>
+        <div class="work" id="work"></div>
+      </section>
+      <section class="panel">
+        <h2>ACTION and GOTO tables</h2>
+        <div class="scroll">
+          <table><thead><tr><th>state</th><th>n</th><th>+</th><th>$</th><th class="split">GOTO E</th></tr></thead><tbody id="table"></tbody></table>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="panel rules">
+    <h2>The four rules used on this page</h2>
+    <ol>
+      <li><b>Closure.</b> For an item <code>[A → α · B β, a]</code> with a non-terminal <code>B</code> after the dot, add <code>[B → · γ, b]</code> for every rule <code>B → γ</code> and every <code>b</code> in FIRST(β a). Repeat until the state stops growing. FIRST(β a) walks β with the FIRST sets and the nullable set; if all of β is nullable, <code>a</code> is in it.</li>
+      <li><b>Goto.</b> <code>goto(I, X)</code> takes the items of <code>I</code> with the dot just before <code>X</code>, moves the dot over <code>X</code> (lookaheads unchanged), then takes the closure. If that set of items already is a state, reuse its number.</li>
+      <li><b>Worklist.</b> Start with the closure of <code>[S′ → · E, $]</code>. Take a state off the list, compute a goto for each symbol after a dot, put every new state on the list. Stop when the list is empty.</li>
+      <li><b>Tables.</b> A transition on a terminal is a shift in ACTION, on a non-terminal a GOTO. A complete item <code>[A → α ·, x]</code> is a reduce in column <code>x</code> only. <code>[S′ → E ·, $]</code> is accept. Two values in one cell is a conflict.</li>
+    </ol>
+  </section>
+</div>
+
+<script>
+const I = {
+  S0: "S′ → · E, $", E0d: "E → · E + n, $", n0d: "E → · n, $", E0p: "E → · E + n, +", n0p: "E → · n, +",
+  S1: "S′ → E ·, $", E1d: "E → E · + n, $", E1p: "E → E · + n, +",
+  n1d: "E → n ·, $", n1p: "E → n ·, +",
+  E2d: "E → E + · n, $", E2p: "E → E + · n, +",
+  E3d: "E → E + n ·, $", E3p: "E → E + n ·, +",
+};
+const POS = { 0: { x: 20, y: 100, w: 200 }, 1: { x: 300, y: 10, w: 190 }, 2: { x: 300, y: 240, w: 190 },
+  3: { x: 590, y: 10, w: 190 }, 4: { x: 590, y: 240, w: 190 } };
+const EDGES = {
+  "0-1": { d: "M220,125 C255,110 265,65 298,55", x: 244, y: 84, label: "E" },
+  "0-2": { d: "M220,200 C255,215 265,255 298,262", x: 244, y: 252, label: "n" },
+  "1-3": { d: "M490,40 L588,40", x: 535, y: 32, label: "+" },
+  "3-4": { d: "M685,80 L685,238", x: 695, y: 162, label: "n" },
+};
+
+// Each step is a snapshot of `st` plus what to light up: focus (state), look/fresh (item indexes),
+// edge, cell, rule
+const STEPS = [];
+const st = { states: {}, edges: [], work: [], table: {} };
+const step = (extra) => STEPS.push(JSON.parse(JSON.stringify({ ...st, ...extra })));
+
+step({ kind: "setup", rule: 0, calc: "S′ → E",
+  text: "Add a start rule S′ → E. Reducing it with $ next means the whole text is one E: that is how the parser knows when to accept." });
+st.states[0] = [I.S0];
+step({ kind: "closure", focus: 0, fresh: [0], rule: 0, calc: "start item = rule 0, dot at 0, lookahead $",
+  text: "State 0 starts with a single item: [S′ → · E, $]. Nothing is read yet, and $ says the end of the text must follow." });
+step({ kind: "closure", focus: 0, look: [0], calc: "dot before E\nafter E: nothing\nFIRST( $ ) = { $ }",
+  text: "Closure. The dot is before the non-terminal E, so we may as well be at the start of any E rule. Their lookahead is FIRST of what follows E in this item, then the item's own lookahead: nothing, then $." });
+st.states[0].push(I.E0d, I.n0d);
+step({ kind: "closure", focus: 0, fresh: [1, 2], rule: [1, 2], calc: "add [E → · E + n, $]\nadd [E → · n, $]",
+  text: "Add each E rule with the dot at the start and the lookahead $." });
+step({ kind: "closure", focus: 0, look: [1], calc: "dot before E\nafter E: + n\nFIRST( + n $ ) = { + }",
+  text: "Next item: [E → · E + n, $]. The dot is before E again. What follows E is + n, so the lookahead is FIRST(+ n $). + is a terminal: the walk stops right there, it gives {+}." });
+st.states[0].push(I.E0p, I.n0p);
+step({ kind: "closure", focus: 0, fresh: [3, 4], rule: [1, 2], calc: "add [E → · E + n, +]\nadd [E → · n, +]",
+  text: "Add the E rules again, with the lookahead +. Same rules, other lookahead: these are other items." });
+step({ kind: "closure", focus: 0, look: [2, 4], calc: "dot before n, a terminal\nnothing to add",
+  text: "[E → · n, $] and [E → · n, +]: the dot is before a terminal. Closure only opens non-terminals, so they add nothing." });
+step({ kind: "closure", focus: 0, look: [3], calc: "FIRST( + n + ) = { + }\n[E → · E + n, +] and [E → · n, +] are already there",
+  text: "[E → · E + n, +] would add items the state already has. Nothing grew during a whole pass: the closure is done. State 0 has 5 items." });
+st.work = [0];
+step({ kind: "work", focus: 0, calc: "worklist = [0]",
+  text: "State 0 is complete. Put it on the worklist: its transitions are still to compute." });
+
+st.work = [];
+step({ kind: "goto", focus: 0, look: [0, 1, 2, 3, 4], calc: "take state 0\nsymbols right after a dot: E, n",
+  text: "Take state 0 off the worklist. Every symbol right after a dot gives one transition: here E and n." });
+step({ kind: "goto", focus: 0, look: [0, 1, 3], calc: "goto(0, E): the items with · E",
+  text: "goto(0, E): keep only the items where the dot is just before E." });
+st.states[1] = [I.S1, I.E1d, I.E1p]; st.edges.push("0-1");
+step({ kind: "goto", focus: 1, fresh: [0, 1, 2], edge: "0-1", calc: "move the dot over E, lookaheads unchanged\nclosure: dots before + or at the end, nothing to add\nnew state 1",
+  text: "Move the dot over E in each of them. The lookaheads stay. Then the closure: no dot is before a non-terminal, so nothing is added. This set of items is not a state yet: it becomes state 1." });
+st.work = [1];
+step({ kind: "work", focus: 1, calc: "worklist = [1]", text: "State 1 is new: put it on the worklist." });
+step({ kind: "goto", focus: 0, look: [2, 4], calc: "goto(0, n): the items with · n",
+  text: "Back to state 0 for its second symbol. goto(0, n): the two items with the dot before n." });
+st.states[2] = [I.n1d, I.n1p]; st.edges.push("0-2");
+step({ kind: "goto", focus: 2, fresh: [0, 1], edge: "0-2", calc: "move the dot over n\nthe dot is at the end: closure adds nothing\nnew state 2",
+  text: "Move the dot over n. Both items are complete now. New state 2." });
+st.work = [1, 2];
+step({ kind: "work", focus: 2, calc: "worklist = [1, 2]", text: "State 2 goes on the worklist too. State 0 has no other symbol: it is done." });
+
+st.work = [2];
+step({ kind: "goto", focus: 1, look: [1, 2], calc: "take state 1\nsymbols right after a dot: +",
+  text: "Take state 1. Only + follows a dot. [S′ → E ·, $] is complete: it gives no transition." });
+st.states[3] = [I.E2d, I.E2p]; st.edges.push("1-3");
+step({ kind: "goto", focus: 3, fresh: [0, 1], edge: "1-3", calc: "goto(1, +): move the dot over +\nthe dot is before n, a terminal: closure adds nothing\nnew state 3",
+  text: "Move the dot over +. New state 3." });
+st.work = [2, 3];
+step({ kind: "work", focus: 3, calc: "worklist = [2, 3]", text: "State 3 goes on the worklist." });
+st.work = [3];
+step({ kind: "goto", focus: 2, look: [0, 1], calc: "take state 2\nno symbol after a dot",
+  text: "Take state 2. Both items are complete: no transition, nothing to do." });
+st.work = [];
+step({ kind: "goto", focus: 3, look: [0, 1], calc: "take state 3\nsymbols right after a dot: n",
+  text: "Take state 3. The dot is before n in both items." });
+st.states[4] = [I.E3d, I.E3p]; st.edges.push("3-4");
+step({ kind: "goto", focus: 4, fresh: [0, 1], edge: "3-4", calc: "goto(3, n): move the dot over n\nnew state 4",
+  text: "Move the dot over n. New state 4." });
+st.work = [4];
+step({ kind: "work", focus: 4, calc: "worklist = [4]", text: "State 4 goes on the worklist." });
+st.work = [];
+step({ kind: "goto", focus: 4, look: [0, 1], calc: "take state 4\nno symbol after a dot\nworklist empty: the automaton is done",
+  text: "Take state 4: both items are complete. The worklist is empty: no state is left to explore. The automaton has 5 states." });
+
+st.table["0,n"] = "s2";
+step({ kind: "table", focus: 0, edge: "0-2", cell: "0,n", calc: "0 —n→ 2, n is a terminal\nACTION[0, n] = s2",
+  text: "Now the tables. A transition on a terminal is a shift: in state 0, reading n moves to state 2." });
+st.table["1,+"] = "s3";
+step({ kind: "table", focus: 1, edge: "1-3", cell: "1,+", calc: "1 —+→ 3\nACTION[1, +] = s3", text: "Same for the transition on + out of state 1." });
+st.table["3,n"] = "s4";
+step({ kind: "table", focus: 3, edge: "3-4", cell: "3,n", calc: "3 —n→ 4\nACTION[3, n] = s4", text: "And for the transition on n out of state 3." });
+st.table["0,E"] = "1";
+step({ kind: "table", focus: 0, edge: "0-1", cell: "0,E", calc: "0 —E→ 1, E is a non-terminal\nGOTO[0, E] = 1",
+  text: "A transition on a non-terminal goes in GOTO. It is never used while reading the text: only right after the pop of a reduce." });
+st.table["2,$"] = "r2";
+step({ kind: "table", focus: 2, look: [0], rule: 2, cell: "2,$", calc: "[E → n ·, $] is complete\nACTION[2, $] = r2",
+  text: "A complete item gives a reduce, only in the column of its lookahead: [E → n ·, $] puts r2 under $." });
+st.table["2,+"] = "r2";
+step({ kind: "table", focus: 2, look: [1], rule: 2, cell: "2,+", calc: "[E → n ·, +]\nACTION[2, +] = r2",
+  text: "[E → n ·, +] puts r2 under +. Under n, nothing: n never follows an E, so an n there is a syntax error." });
+st.table["4,$"] = "r1";
+step({ kind: "table", focus: 4, look: [0], rule: 1, cell: "4,$", calc: "[E → E + n ·, $]\nACTION[4, $] = r1", text: "Same in state 4 with rule 1, under $..." });
+st.table["4,+"] = "r1";
+step({ kind: "table", focus: 4, look: [1], rule: 1, cell: "4,+", calc: "[E → E + n ·, +]\nACTION[4, +] = r1", text: "...and under +." });
+st.table["1,$"] = "acc";
+step({ kind: "table", focus: 1, look: [0], rule: 0, cell: "1,$", calc: "[S′ → E ·, $]\nACTION[1, $] = acc",
+  text: "The complete start item does not reduce: it accepts, under $." });
+
+step({ kind: "done", calc: "no cell has two values\nthe grammar is LR(1)",
+  text: "Every cell got at most one value: no conflict, the grammar is LR(1). A cell with two values would be a shift/reduce or reduce/reduce conflict: report it, never overwrite it." });
+step({ kind: "done", calc: "LALR: drop the lookaheads, merge the states\nthat are left with the same items",
+  text: "LALR: compare the states without their lookaheads and merge the equal ones, joining their lookaheads. Here the 5 states all have different items: nothing merges, the LALR table is this one. On a big grammar, many LR(1) states differ only by their lookaheads." });
+
+const LABEL = { setup: "set up", closure: "closure", work: "worklist", goto: "goto", table: "fill the tables", done: "done" };
+const COLS = ["n", "+", "$", "E"];
+const $ = (id) => document.getElementById(id);
+const esc = (t) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+let i = 0;
+
+function svg(s) {
+  let out = `<defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker>
+    <marker id="arrow-on" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z"/></marker></defs>`;
+  for (const e of s.edges) {
+    const g = EDGES[e];
+    out += `<g class="edge${e === s.edge ? " on" : ""}"><path d="${g.d}"/><text x="${g.x}" y="${g.y}">${g.label}</text></g>`;
+  }
+  const ids = Object.keys(s.states);
+  if (!ids.length) out += `<text class="empty" x="400" y="165" text-anchor="middle">No state yet</text>`;
+  for (const id of ids) {
+    const p = POS[id], items = s.states[id], on = String(s.focus) === id;
+    out += `<g class="box${on ? " on" : ""}"><rect class="frame" x="${p.x}" y="${p.y}" width="${p.w}" height="${30 + 20 * items.length}" rx="8"/>`;
+    out += `<circle cx="${p.x + 18}" cy="${p.y + 20}" r="11"/><text class="num" x="${p.x + 18}" y="${p.y + 24}" text-anchor="middle">${id}</text>`;
+    items.forEach((it, k) => {
+      const y = p.y + 26 + 20 * k;
+      const mark = on && (s.fresh || []).includes(k) ? "new" : on && (s.look || []).includes(k) ? "look" : "";
+      if (mark) out += `<rect class="${mark}" x="${p.x + 33}" y="${y - 14}" width="${p.w - 40}" height="19" rx="4"/>`;
+      out += `<text x="${p.x + 38}" y="${y}">${esc(it)}</text>`;
+    });
+    out += `</g>`;
+  }
+  return out;
+}
+
+function render() {
+  const s = STEPS[i];
+  $("auto").innerHTML = svg(s);
+  const rules = [].concat(s.rule ?? []);
+  document.querySelectorAll(".grammar span").forEach((r) => r.classList.toggle("on", rules.includes(+r.id.slice(2))));
+  $("badge").className = "badge " + s.kind;
+  $("badge").textContent = LABEL[s.kind];
+  $("calc").textContent = s.calc;
+  $("text").textContent = s.text;
+  $("work").innerHTML = s.work.length ? s.work.map((w) => `<span>${w}</span>`).join("") : "<em>empty</em>";
+  $("table").innerHTML = Object.keys(s.states).map((id) => `<tr><th>${id}</th>` + COLS.map((c) => {
+    const key = id + "," + c;
+    return `<td class="${key === s.cell ? "hot" : ""} ${c === "E" ? "split" : ""}">${s.table[key] || ""}</td>`;
+  }).join("") + "</tr>").join("") || `<tr><td colspan="5" style="color:var(--muted)">no state yet</td></tr>`;
+  $("counter").textContent = `step ${i + 1} / ${STEPS.length}`;
+  $("bar").style.width = ((i + 1) / STEPS.length) * 100 + "%";
+  $("prev").disabled = i === 0;
+  $("next").disabled = i === STEPS.length - 1;
+}
+
+$("next").onclick = () => { if (i < STEPS.length - 1) { i++; render(); } };
+$("prev").onclick = () => { if (i > 0) { i--; render(); } };
+$("reset").onclick = () => { i = 0; render(); };
+document.addEventListener("keydown", (e) => {
+  if (e.key === "ArrowRight") $("next").click();
+  if (e.key === "ArrowLeft") $("prev").click();
+});
+render();
+</script>
+</body>
+</html>

@@ -72,4 +72,6 @@ for this project. Krc is a work in progress: what is left is tracked in the
 - [Source code](https://github.com/Solype/Krc)
 - [Releases](https://github.com/Solype/Krc/releases)
 - [Encoder test report](TEST_REPORT.md)
+- [LR parsing step by step](lr-step-by-step.html)
+- [Building an LR table step by step](lr-construction.html)
 - [Use of AI in this project](https://github.com/Solype/Krc/blob/main/USE_OF_AI.md)
