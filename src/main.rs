@@ -16,7 +16,8 @@ use std::{env, process};
 
 use converter::converter::Converter;
 use parser::cfg::parser::Parser;
-use parser::cfg::rules::TEST_RULES;
+use parser::cfg::rules::{RULES, TEST_RULES};
+use parser::cfg::rulesorganiser::rulesorganiser::RuleOrganiser;
 use parser::postparser::structs::Program;
 
 const OUTPUT: &str = "output.elf";
@@ -39,7 +40,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
         Command::Compile(args) => args,
     };
-    let main_parser = Parser::new(TEST_RULES);
+    let main_parser = Parser::new(RuleOrganiser::new(TEST_RULES));
     let mut objects = Vec::new();
     for path in &args.paths {
         objects.push(compile(&args, path, &main_parser)?);

@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::parser::{
     cfg::{
-        firsts::FirstDerivationSet,
+        rulesorganiser::rulesorganiser::RuleOrganiser,
         structs::{NTerm, ParserNode, ParserProduction},
     },
     parser_token::ParserTokenKind,
@@ -26,7 +26,7 @@ impl FollowsDerivationBuilder {
         &mut self,
         i: usize,
         nterm: &NTerm,
-        firsts: &FirstDerivationSet,
+        rules: &RuleOrganiser,
         rule: &ParserProduction,
     ) {
         let mut j = 1;
@@ -38,27 +38,15 @@ impl FollowsDerivationBuilder {
                 None => {
                     self.eq_statements.insert((*nterm, rule.left));
                 }
-                // B a : FOLLOW(B) gets a
-                Some(ParserNode::Term(term)) => {
+                // B X : FOLLOW(B) gets FIRST(X), FIRST(a) = { a }; X nullable: the next symbol too
+                Some(next) => {
+                    let (first, nullable) = rules.first(next);
+                    run = nullable;
                     self.follow_derivatives
                         .entry(*nterm)
                         .or_default()
                         .0
-                        .insert(term.clone());
-                }
-                // B C : FOLLOW(B) gets FIRST(C)
-                Some(ParserNode::NTerm(next)) => {
-                    if firsts.nullable.contains(next) {
-                        run = true
-                    }
-                    let Some(firsts_of_next) = firsts.set.get(next) else {
-                        unimplemented!();
-                    };
-                    self.follow_derivatives
-                        .entry(*nterm)
-                        .or_default()
-                        .0
-                        .extend(firsts_of_next.0.clone());
+                        .extend(first.0);
                 }
             }
             if !run {
@@ -70,17 +58,13 @@ impl FollowsDerivationBuilder {
         }
     }
 
-    fn process_follows_derivative(
-        &mut self,
-        rules: &'static [ParserProduction],
-        firsts: &FirstDerivationSet,
-    ) {
-        for rule in rules {
+    fn process_follows_derivative(&mut self, rules: &RuleOrganiser) {
+        for rule in rules.iter() {
             for (i, node) in rule.right.iter().enumerate() {
                 let ParserNode::NTerm(nterm) = node else {
                     continue;
                 };
-                self.process_follows_for_1_nterm(i, nterm, firsts, rule);
+                self.process_follows_for_1_nterm(i, nterm, rules, rule);
             }
         }
     }
@@ -105,11 +89,7 @@ impl FollowsDerivationBuilder {
         }
     }
 
-    pub fn follows(
-        rules: &'static [ParserProduction],
-        firsts: &FirstDerivationSet,
-        start: NTerm,
-    ) -> FollowDerivationSet {
+    pub fn follows(rules: &RuleOrganiser, start: NTerm) -> FollowDerivationSet {
         let mut me = Self::default();
 
         me.follow_derivatives
@@ -118,7 +98,7 @@ impl FollowsDerivationBuilder {
             .0
             .insert(ParserTokenKind::Eof);
 
-        me.process_follows_derivative(rules, firsts);
+        me.process_follows_derivative(rules);
         me.resolve_eq_statement();
         FollowDerivationSet(me.follow_derivatives)
     }

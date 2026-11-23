@@ -6,9 +6,9 @@ pub mod rules;
 #[allow(dead_code)]
 pub mod structs;
 
-pub mod firsts;
-pub mod follows;
 mod display;
+pub mod rulesorganiser;
+mod parsing_table;
 
 #[cfg(test)]
 mod test;

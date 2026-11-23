@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::parser::cfg::firsts::FirstPairBuilder;
+use crate::parser::cfg::rulesorganiser::firsts::FirstPairBuilder;
 use crate::parser::cfg::rules::TEST_RULES;
 use crate::parser::cfg::structs::NTerm;
 use crate::lexer::lexer_token::{Operator, Punctuation};

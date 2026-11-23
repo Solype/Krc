@@ -7,15 +7,35 @@ use crate::parser::{
 
 /// resource : https://www.youtube.com/watch?v=oOCromcWnfc
 ///
-use super::structs::NTerm;
+use crate::parser::cfg::structs::NTerm;
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct FirstDerivation(pub HashSet<ParserTokenKind>);
+
+impl std::ops::Deref for FirstDerivation {
+    type Target = HashSet<ParserTokenKind>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct FirstDerivationSet {
     pub set: HashMap<NTerm, FirstDerivation>,
     pub nullable: HashSet<NTerm>,
+}
+
+impl FirstDerivationSet {
+    pub fn first_of(&self, node: &ParserNode) -> (FirstDerivation, bool) {
+        match node {
+            ParserNode::NTerm(nterm) => (
+                self.set.get(nterm).cloned().unwrap_or_default(),
+                self.nullable.contains(nterm),
+            ),
+            ParserNode::Term(tok) => (FirstDerivation(HashSet::from([tok.clone()])), false),
+        }
+    }
 }
 
 #[derive(Debug, Default)]

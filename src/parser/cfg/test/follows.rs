@@ -2,17 +2,17 @@
 //! FOLLOW(E) = FOLLOW(E′) = { ), $ }, FOLLOW(T) = FOLLOW(T′) = { +, ), $ }, FOLLOW(F) = { *, +, ), $ }
 use std::collections::HashSet;
 
-use crate::parser::cfg::firsts::FirstPairBuilder;
-use crate::parser::cfg::follows::FollowsDerivationBuilder;
+use crate::parser::cfg::rulesorganiser::follows::FollowsDerivationBuilder;
+use crate::parser::cfg::rulesorganiser::rulesorganiser::RuleOrganiser;
 use crate::parser::cfg::rules::TEST_RULES;
 use crate::parser::cfg::structs::NTerm;
 use crate::lexer::lexer_token::{Operator, Punctuation};
 use crate::parser::parser_token::ParserTokenKind;
 
 fn follow_of(nterm: NTerm) -> HashSet<ParserTokenKind> {
-    let firsts = FirstPairBuilder::firsts(TEST_RULES);
-    let follows = FollowsDerivationBuilder::follows(TEST_RULES, &firsts, NTerm::E);
-    println!("FIRST:\n{firsts}FOLLOW:\n{follows}");
+    let rules = RuleOrganiser::new(TEST_RULES);
+    let follows = FollowsDerivationBuilder::follows(&rules, NTerm::E);
+    println!("FOLLOW:\n{follows}");
     follows.0.get(&nterm).map(|follow| follow.0.clone()).unwrap_or_default()
 }
 

@@ -1,19 +1,12 @@
-use crate::parser::cfg::{firsts, follows};
-
-use super::structs::ParserProduction;
+use crate::parser::cfg::{parsing_table::Automata, rulesorganiser::rulesorganiser::RuleOrganiser};
 
 pub struct Parser {
-    rules: &'static [ParserProduction],
+    rules: RuleOrganiser,
 }
 
 impl Parser {
-    pub fn new(rules: &'static [ParserProduction]) -> Self {
-        let firsts = firsts::FirstPairBuilder::firsts(rules);
-        let follows =
-            follows::FollowsDerivationBuilder::follows(rules, &firsts, super::structs::NTerm::E);
-        println!("FIRST:\n{firsts}");
-        println!("FOLLOW:\n{follows}");
-
+    pub fn new(rules: RuleOrganiser) -> Self {
+        let _automata = Automata::new(&rules, 0);
         Parser { rules }
     }
 }

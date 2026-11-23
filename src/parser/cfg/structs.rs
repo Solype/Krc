@@ -121,6 +121,7 @@ pub enum NTerm {
 }
 
 /// A terminal is a token category, without the token's value: `Name` matches any name
+#[derive(Clone)]
 pub enum ParserNode {
     Term(ParserTokenKind),
     NTerm(NTerm),
