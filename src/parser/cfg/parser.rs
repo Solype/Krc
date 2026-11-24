@@ -1,4 +1,6 @@
-use crate::parser::cfg::{parsing_table::Automata, rulesorganiser::rulesorganiser::RuleOrganiser};
+use crate::parser::cfg::{
+    parsing_table::automata::Automata, rulesorganiser::rulesorganiser::RuleOrganiser,
+};
 
 pub struct Parser {
     rules: RuleOrganiser,

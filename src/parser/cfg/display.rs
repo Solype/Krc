@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
-use super::parsing_table::{AutomataState, Item};
+use super::parsing_table::automata_state::AutomataState;
+use super::parsing_table::item::Item;
 use super::rulesorganiser::firsts::{FirstDerivation, FirstDerivationSet};
 use super::rulesorganiser::follows::{FollowDerivation, FollowDerivationSet};
 use super::rulesorganiser::rulesorganiser::RuleOrganiser;

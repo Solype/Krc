@@ -1,4 +1,5 @@
-use crate::parser::cfg::parsing_table::{AutomataState, Item};
+use crate::parser::cfg::parsing_table::automata_state::AutomataState;
+use crate::parser::cfg::parsing_table::item::Item;
 use crate::parser::cfg::rules::TEST_RULES;
 use crate::parser::cfg::rulesorganiser::rulesorganiser::RuleOrganiser;
 use crate::parser::parser_token::ParserTokenKind;

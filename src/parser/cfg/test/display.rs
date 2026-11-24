@@ -73,7 +73,8 @@ fn follow_sets_follow_the_order_of_nterm() {
 
 #[test]
 fn an_automata_state_shows_its_items_then_its_sorted_transitions() {
-    use crate::parser::cfg::parsing_table::{AutomataState, Item};
+    use crate::parser::cfg::parsing_table::automata_state::AutomataState;
+    use crate::parser::cfg::parsing_table::item::Item;
     use crate::parser::cfg::rules::TEST_RULES;
     use crate::parser::cfg::rulesorganiser::rulesorganiser::RuleOrganiser;
     use crate::parser::cfg::structs::ParserNode;

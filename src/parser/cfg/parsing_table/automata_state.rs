@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use super::item::Item;
 use crate::parser::{
     cfg::{
         rulesorganiser::rulesorganiser::RuleOrganiser,
@@ -8,32 +9,13 @@ use crate::parser::{
     parser_token::ParserTokenKind,
 };
 
-enum Action {}
-
-#[derive(PartialEq, Eq, Clone)]
-pub(super) struct Item {
-    pub(super) rule: usize,
-    pub(super) dot: usize,
-    pub(super) lookahead: ParserTokenKind,
-}
-
-impl Item {
-    pub fn new(rule: usize, lookahead: ParserTokenKind) -> Self {
-        Self {
-            rule,
-            dot: 0,
-            lookahead,
-        }
-    }
-}
-
 #[derive(Default)]
-pub(super) struct AutomataState {
+pub struct AutomataState {
     kernel_len: usize,
-    pub(super) items: Vec<Item>,
+    pub items: Vec<Item>,
     // sorted items reference all the nodes whose rule.right[dot] is the same
     sorted_items: HashMap<ParserNode, Vec<usize>>,
-    pub(super) nexts: HashMap<ParserNode, usize>,
+    pub nexts: HashMap<ParserNode, usize>,
 }
 
 impl AutomataState {
@@ -134,44 +116,5 @@ impl AutomataState {
 impl PartialEq for AutomataState {
     fn eq(&self, other: &Self) -> bool {
         self.same_kernel(&other.items[..other.kernel_len])
-    }
-}
-
-#[derive(Default)]
-pub struct Automata {
-    states: Vec<AutomataState>,
-}
-
-impl Automata {
-    fn automata_formation_loop(&mut self, rules: &RuleOrganiser) {
-        let mut i = 0;
-        while i < self.states.len() {
-            let nexts = self.states[i].nexts();
-            for (transi, mut state) in nexts {
-                let ndx = match self.states.iter().position(|known| *known == state) {
-                    Some(ndx) => ndx,
-                    None => {
-                        state.derives(rules);
-                        self.states.push(state);
-                        self.states.len() - 1
-                    }
-                };
-                self.states[i].nexts.insert(transi, ndx);
-            }
-            i += 1;
-        }
-    }
-
-    pub fn new(rules: &RuleOrganiser, start_prod: usize) -> Self {
-        let mut first_state =
-            AutomataState::from_items(vec![Item::new(start_prod, ParserTokenKind::Eof)]);
-        first_state.derives(rules);
-        println!("{}", first_state.display(rules));
-
-        let mut me = Self {
-            states: vec![first_state],
-        };
-        me.automata_formation_loop(rules);
-        me
     }
 }

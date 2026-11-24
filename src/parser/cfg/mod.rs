@@ -7,8 +7,8 @@ pub mod rules;
 pub mod structs;
 
 mod display;
-pub mod rulesorganiser;
 mod parsing_table;
+pub mod rulesorganiser;
 
 #[cfg(test)]
 mod test;
