@@ -93,7 +93,7 @@ impl AutomataStateDisplay<'_> {
     }
 }
 
-fn node_name(node: &ParserNode) -> String {
+pub(super) fn node_name(node: &ParserNode) -> String {
     match node {
         ParserNode::Term(kind) => terminal(kind),
         ParserNode::NTerm(nterm) => format!("{nterm:?}"),

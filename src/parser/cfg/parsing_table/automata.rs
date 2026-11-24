@@ -5,7 +5,7 @@ use crate::parser::{
 };
 
 pub struct Automata {
-    states: Vec<AutomataState>,
+    pub states: Vec<AutomataState>,
 }
 
 impl Automata {
