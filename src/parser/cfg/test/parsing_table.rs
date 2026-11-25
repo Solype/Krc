@@ -1,11 +1,12 @@
 use crate::lexer::lexer_token::{Operator, Punctuation};
+use crate::lexer::span::Span;
+use crate::parser::cfg::parser::Parser;
 use crate::parser::cfg::parsing_table::automata_state::AutomataState;
 use crate::parser::cfg::parsing_table::item::Item;
 use crate::parser::cfg::parsing_table::parsing_table::{Action, ParsingTable};
 use crate::parser::cfg::rules::{RULES, TEST_RULES};
 use crate::parser::cfg::rulesorganiser::rulesorganiser::RuleOrganiser;
-use crate::parser::cfg::structs::ParserNode;
-use crate::parser::parser_token::ParserTokenKind;
+use crate::parser::parser_token::{ParserToken, ParserTokenKind};
 
 #[test]
 fn states_are_equal_when_their_kernels_are() {
@@ -19,38 +20,20 @@ fn states_are_equal_when_their_kernels_are() {
     assert!(state != AutomataState::from_items(vec![first]));
 }
 
-/// Runs the table on `tokens` (then Eof), true when it accepts
+/// Parses `tokens` (then Eof), true when the parser accepts
 fn accepts(tokens: &[ParserTokenKind]) -> bool {
-    let rules = RuleOrganiser::new(TEST_RULES);
-    let table = ParsingTable::new(&rules, 0).unwrap();
-    let mut tokens = tokens.iter().cloned().chain([ParserTokenKind::Eof]).peekable();
-    let mut stack = vec![0];
-    loop {
-        let token = ParserNode::Term(tokens.peek().unwrap().clone());
-        match table.map.get(&(*stack.last().unwrap(), token)) {
-            Some(Action::Shift(state)) => {
-                tokens.next();
-                stack.push(*state);
-            }
-            Some(Action::Reduce(rule)) => {
-                let rule = rules.get(*rule).unwrap();
-                stack.truncate(stack.len() - rule.right.len());
-                let left = ParserNode::NTerm(rule.left);
-                let Some(Action::Goto(state)) = table.map.get(&(*stack.last().unwrap(), left))
-                else {
-                    panic!("no goto");
-                };
-                stack.push(*state);
-            }
-            Some(Action::Accept) => return true,
-            Some(Action::Goto(_)) => unreachable!(),
-            None => return false,
-        }
-    }
+    let tokens: Vec<ParserToken> = tokens
+        .iter()
+        .cloned()
+        .chain([ParserTokenKind::Eof])
+        .map(|kind| ParserToken::new(kind, Span::new(0, 0)))
+        .collect();
+    let parser = Parser::new(RuleOrganiser::new(TEST_RULES)).unwrap();
+    parser.run(&tokens).is_ok()
 }
 
 #[test]
-fn the_table_accepts_the_expressions_and_nothing_else() {
+fn the_parser_accepts_the_expressions_and_nothing_else() {
     let name = || ParserTokenKind::Name("x".to_string());
     let plus = || ParserTokenKind::Operator(Operator::Plus);
     let star = || ParserTokenKind::Operator(Operator::Star);

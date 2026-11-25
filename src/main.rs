@@ -69,6 +69,7 @@ fn compile(args: &Args, path: &str, main_parser: &Parser) -> Result<String, Box<
         let (line, col) = warning.span.line_col(&source);
         eprintln!("{}:{line}:{col}: warning: {warning}", path);
     }
+    main_parser.run(&pre_parsed.tokens);
     let ast: Program = todo!("the parser and the post-parser are being rewritten by hand");
     print!("{ast}");
     // in several files, only one has the main
