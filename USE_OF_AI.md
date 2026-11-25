@@ -7,13 +7,13 @@ through Claude Code).
 
 - **The commits**: every commit made with the AI between October 2 and 5, and some of those of
   October 9 and 10 (`d198bad`), carry the line `Co-Authored-By: Claude`.
-- **The AI sessions still on record** (October 5, 9 and 15): they give the detail, function by
-  function, of who wrote what in the grammar, the LR table, the parser, the AST and the
-  converter.
+- **The AI sessions still on record** (October 5, 9 and 15, November 23 to 25): they give the
+  detail, function by function, of who wrote what in the grammar, the LR table, the parser, the
+  AST and the converter.
 - **Exception**: the commits `fc1447c`, `efaad85` and `d1c847c` (October 9) were made by the AI,
   but without the `Co-Authored-By` line, at my request. Their content is detailed below. The
   same goes for the commits of October 15 (`996c222` to `41000ea`), October 20 (from `7c222ba`)
-  and November 6 (from `f2adc0a`), and of November 8 to 17.
+  and November 6 (from `f2adc0a`), of November 8 to 17, and of November 23 to 25 (from `5190f9e`).
 - **Limits**:
   - the AI sessions of October 2 to 4 are no longer available: for that period, only the
     `Co-Authored-By` line counts;
@@ -29,7 +29,8 @@ through Claude Code).
 | ELF backend and x86-64 encoder (`src/elf`), March to September | Me; once the complex functions were in place, the AI completed it instruction by instruction (opcodes), then added the PLT32/32S relocations, the SSE instructions and the ELF labels (October 2) |
 | Design of the Korean language, TODO, translation to English | Me and AI |
 | Lexer, hangeul conjugation, pre-parser (October 3 to 5) | Me for 20-30 % of the pre-parser, AI for the rest |
-| Grammar, FIRST, LR(1) table, parser, tree, AST (October 5 to 9) | Me and AI: the grammar and FIRST by the AI, on my `ParserProduction` struct; detail below |
+| Grammar, FIRST, LR(1) table, parser, tree, AST (October 5 to 9) | Me and AI: the grammar and FIRST by the AI, on my `ParserProduction` struct; detail below. The table, the parser and the tree were cleared on November 20 and rewritten |
+| Parser rewritten by hand: LR(1) automaton, table, parser, tree (`src/parser/cfg`, November 20 to 25) | Mostly me, by hand; reviewed, fixed and in places finished by AI: detail below |
 | Converter, the semantic analysis (`src/converter`, October 12 to 15) | Shared: detail below |
 | IR and code generation (`src/converter/ir`, `src/codegen`, October 16 to 31) | Mostly me; the AI helped complete the structs of the IR: detail below |
 | Sample programs (`src/samples`, `sample/`), README | Me and AI |
@@ -115,7 +116,9 @@ except for the documentation, written together.
 
 ## October 9: LR(1) table, parser, tree and AST
 
-On this part, I wrote some of the code myself, guided by the explanations of the AI.
+On this part, I wrote some of the code myself, guided by the explanations of the AI. The table, the
+parser, the tree and the conversion to the AST were cleared on November 20 (`f21dfbe`), to be
+rewritten by hand: see "November 20 to 25".
 
 ### LR(1) table (`parsing_table.rs`)
 
@@ -237,6 +240,27 @@ instructions. The AI helped me complete the IR structs; I wrote the rest by hand
 |---|---|
 | Fixes of issues #18, #17 and #2 | Me, finished and debugged by AI |
 | Fix of issue #47, assignment with `이에요` instead of `넣다` | AI, at my request |
+
+## November 20 to 25: the parser rewritten by hand
+
+I wrote most of the new parser (`src/parser/cfg`) by hand. The AI explained, reviewed each step and
+fixed the bugs, and wrote or finished the pieces below at my request. The grammar rules, the `rule!`
+and `term!` macros are still those of October, by the AI.
+
+| Element | Who |
+|---|---|
+| `RuleOrganiser`, `Item`, `AutomataState` | Me |
+| Closure of a state (`derives`) | Me, reviewed by AI |
+| `lookaheads` | Me (first version, in the closure), rewritten by AI to compute it once |
+| Transitions of a state (`nexts`) | Me, reviewed by AI |
+| `same_kernel` and `PartialEq` of `AutomataState` | AI |
+| Loop over the states (`Automata`) | Me, fixed with code from the AI (states already known) |
+| `ParsingTable`: Shift and Goto | Me |
+| `ParsingTable`: Reduce, Accept, conflict errors | AI, at my request |
+| Loop of `Parser::run` | Me (draft), fixed by AI |
+| `TreeNode` and building the tree | Me (start), finished by AI |
+| Display of a state, splitting `parsing_table.rs` into a folder, imports | AI, at my request |
+| Tests, commits | AI |
 
 ## How I used the AI
 
