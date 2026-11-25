@@ -1,6 +1,6 @@
 use crate::lexer::lexer_token::{Operator, Punctuation};
 use crate::lexer::span::Span;
-use crate::parser::cfg::parser::Parser;
+use crate::parser::cfg::parser::{Parser, TreeNode};
 use crate::parser::cfg::parsing_table::automata_state::AutomataState;
 use crate::parser::cfg::parsing_table::item::Item;
 use crate::parser::cfg::parsing_table::parsing_table::{Action, ParsingTable};
@@ -20,16 +20,44 @@ fn states_are_equal_when_their_kernels_are() {
     assert!(state != AutomataState::from_items(vec![first]));
 }
 
-/// Parses `tokens` (then Eof), true when the parser accepts
-fn accepts(tokens: &[ParserTokenKind]) -> bool {
+/// Parses `tokens` (then Eof); the span of a token is its index
+fn parse(tokens: &[ParserTokenKind]) -> Result<TreeNode, String> {
     let tokens: Vec<ParserToken> = tokens
         .iter()
         .cloned()
         .chain([ParserTokenKind::Eof])
-        .map(|kind| ParserToken::new(kind, Span::new(0, 0)))
+        .enumerate()
+        .map(|(i, kind)| ParserToken::new(kind, Span::new(i, i + 1)))
         .collect();
-    let parser = Parser::new(RuleOrganiser::new(TEST_RULES)).unwrap();
-    parser.run(&tokens).is_ok()
+    Parser::new(RuleOrganiser::new(TEST_RULES)).unwrap().run(&tokens)
+}
+
+fn accepts(tokens: &[ParserTokenKind]) -> bool {
+    parse(tokens).is_ok()
+}
+
+#[test]
+fn the_tree_keeps_the_rules_and_the_real_tokens() {
+    let x = ParserTokenKind::Name("x".to_string());
+    let y = ParserTokenKind::Name("y".to_string());
+    let plus = ParserTokenKind::Operator(Operator::Plus);
+    let node = |rule, children| TreeNode::Node { rule, children };
+    let leaf = |kind: &ParserTokenKind, i| {
+        TreeNode::Leaf(ParserToken::new(kind.clone(), Span::new(i, i + 1)))
+    };
+    // T → F TPrime, F → Name, TPrime → ε
+    let term = |kind, i| node(3, vec![node(6, vec![leaf(kind, i)]), node(5, vec![])]);
+
+    assert_eq!(
+        parse(&[x.clone(), plus.clone(), y.clone()]).unwrap(),
+        node(
+            0,
+            vec![
+                term(&x, 0),
+                node(1, vec![leaf(&plus, 1), term(&y, 2), node(2, vec![])]),
+            ]
+        )
+    );
 }
 
 #[test]
