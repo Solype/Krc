@@ -1,3 +1,4 @@
+use crate::lexer::span::Span;
 use crate::parser::{
     cfg::{
         parsing_table::parsing_table::{Action, ParsingTable},
@@ -11,7 +12,7 @@ use crate::parser::{
 const START_RULE: usize = 0;
 
 pub struct Parser {
-    rules: RuleOrganiser,
+    pub rules: RuleOrganiser,
     table: ParsingTable,
 }
 
@@ -23,6 +24,29 @@ pub enum TreeNode {
         rule: usize,
         children: Vec<TreeNode>,
     },
+}
+
+impl TreeNode {
+    /// From the start of the first token to the end of the last one; `None` for an empty rule (ε)
+    pub fn span(&self) -> Option<Span> {
+        let first = self.first_token()?;
+        let last = self.last_token()?;
+        Some(Span::new(first.span.start, last.span.end))
+    }
+
+    fn first_token(&self) -> Option<&ParserToken> {
+        match self {
+            TreeNode::Leaf(token) => Some(token),
+            TreeNode::Node { children, .. } => children.iter().find_map(TreeNode::first_token),
+        }
+    }
+
+    fn last_token(&self) -> Option<&ParserToken> {
+        match self {
+            TreeNode::Leaf(token) => Some(token),
+            TreeNode::Node { children, .. } => children.iter().rev().find_map(TreeNode::last_token),
+        }
+    }
 }
 
 impl Parser {
