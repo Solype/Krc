@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
+use super::parser::TreeNode;
 use super::parsing_table::automata_state::AutomataState;
 use super::parsing_table::item::Item;
 use super::rulesorganiser::firsts::{FirstDerivation, FirstDerivationSet};
@@ -90,6 +91,48 @@ impl AutomataStateDisplay<'_> {
             right.join(" "),
             terminal(&item.lookahead)
         )
+    }
+}
+
+/// A node only holds its rule's index: `tree.display(&rules)` brings the rules to print it
+pub struct TreeNodeDisplay<'a> {
+    tree: &'a TreeNode,
+    rules: &'a RuleOrganiser,
+}
+
+impl TreeNode {
+    pub fn display<'a>(&'a self, rules: &'a RuleOrganiser) -> TreeNodeDisplay<'a> {
+        TreeNodeDisplay { tree: self, rules }
+    }
+}
+
+/// One line per node, its children below it with guides: `Statement [12]` (the rule's index, what
+/// the post-parser matches on), a leaf as its token with its value, `Name("compte")`
+impl fmt::Display for TreeNodeDisplay<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.lines(f, self.tree, "", "")
+    }
+}
+
+impl TreeNodeDisplay<'_> {
+    /// `head` goes before this node's label, `prefix` before the lines of its children
+    fn lines(&self, f: &mut fmt::Formatter, node: &TreeNode, head: &str, prefix: &str) -> fmt::Result {
+        match node {
+            TreeNode::Leaf(token) => writeln!(f, "{head}{:?}", token.kind),
+            TreeNode::Node { rule, children } => {
+                match self.rules.get(*rule) {
+                    Some(production) => writeln!(f, "{head}{:?} [{rule}]", production.left)?,
+                    None => writeln!(f, "{head}rule {rule} unknown")?,
+                }
+                for (i, child) in children.iter().enumerate() {
+                    let last = i + 1 == children.len();
+                    let head = format!("{prefix}{}", if last { "└── " } else { "├── " });
+                    let next = format!("{prefix}{}", if last { "    " } else { "│   " });
+                    self.lines(f, child, &head, &next)?;
+                }
+                Ok(())
+            }
+        }
     }
 }
 

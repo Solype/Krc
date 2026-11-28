@@ -98,3 +98,40 @@ fn an_automata_state_shows_its_items_then_its_sorted_transitions() {
          T → 3\n"
     );
 }
+
+#[test]
+fn a_tree_shows_its_rules_and_its_tokens_with_guides() {
+    use crate::lexer::span::Span;
+    use crate::parser::cfg::parser::Parser;
+    use crate::parser::cfg::rules::TEST_RULES;
+    use crate::parser::cfg::rulesorganiser::rulesorganiser::RuleOrganiser;
+    use crate::parser::parser_token::ParserToken;
+
+    let tokens: Vec<ParserToken> = [
+        ParserTokenKind::Name("x".to_string()),
+        ParserTokenKind::Operator(Operator::Plus),
+        ParserTokenKind::Name("y".to_string()),
+        ParserTokenKind::Eof,
+    ]
+    .into_iter()
+    .map(|kind| ParserToken::new(kind, Span::new(0, 0)))
+    .collect();
+    let parser = Parser::new(RuleOrganiser::new(TEST_RULES)).unwrap();
+    let tree = parser.run(&tokens).unwrap();
+    assert_eq!(
+        tree.display(&parser.rules).to_string(),
+        "E [0]
+├── T [3]
+│   ├── F [6]
+│   │   └── Name(\"x\")
+│   └── TPrime [5]
+└── EPrime [1]
+    ├── Operator(Plus)
+    ├── T [3]
+    │   ├── F [6]
+    │   │   └── Name(\"y\")
+    │   └── TPrime [5]
+    └── EPrime [2]
+"
+    );
+}
