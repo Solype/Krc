@@ -30,7 +30,8 @@ through Claude Code).
 | Design of the Korean language, TODO, translation to English | Me and AI |
 | Lexer, hangeul conjugation, pre-parser (October 3 to 5) | Me for 20-30 % of the pre-parser, AI for the rest |
 | Grammar, FIRST, LR(1) table, parser, tree, AST (October 5 to 9) | Me and AI: the grammar and FIRST by the AI, on my `ParserProduction` struct; detail below. The table, the parser and the tree were cleared on November 20 and rewritten |
-| Parser rewritten by hand: LR(1) automaton, table, parser, tree (`src/parser/cfg`, November 20 to 25) | Mostly me, by hand; reviewed, fixed and in places finished by AI: detail below |
+| Parser rewritten by hand: LR(1) automaton, table, parser, tree (`src/parser/cfg`, November 20 to 28) | Me, by hand, learning from pages the AI made (`docs/lr-step-by-step.html`, `docs/lr-construction.html`); reviewed, fixed and in places finished by AI: detail below |
+| Conversion of the tree to the AST (`src/parser/postparser`, November 28) | AI |
 | Converter, the semantic analysis (`src/converter`, October 12 to 15) | Shared: detail below |
 | IR and code generation (`src/converter/ir`, `src/codegen`, October 16 to 31) | Mostly me; the AI helped complete the structs of the IR: detail below |
 | Sample programs (`src/samples`, `sample/`), README | Me and AI |
@@ -118,7 +119,7 @@ except for the documentation, written together.
 
 On this part, I wrote some of the code myself, guided by the explanations of the AI. The table, the
 parser, the tree and the conversion to the AST were cleared on November 20 (`f21dfbe`), to be
-rewritten by hand: see "November 20 to 25".
+rewritten by hand: see "November 20 to 28".
 
 ### LR(1) table (`parsing_table.rs`)
 
@@ -241,10 +242,12 @@ instructions. The AI helped me complete the IR structs; I wrote the rest by hand
 | Fixes of issues #18, #17 and #2 | Me, finished and debugged by AI |
 | Fix of issue #47, assignment with `이에요` instead of `넣다` | AI, at my request |
 
-## November 20 to 25: the parser rewritten by hand
+## November 20 to 28: the parser rewritten by hand
 
-I wrote most of the new parser (`src/parser/cfg`) by hand. The AI explained, reviewed each step and
-fixed the bugs, and wrote or finished the pieces below at my request. The grammar rules, the `rule!`
+I rewrote the parser (`src/parser/cfg`) by hand, learning the LR(1) construction from two pages the
+AI made for me (`docs/lr-step-by-step.html`, `docs/lr-construction.html`). The AI explained, reviewed
+each step and fixed the bugs, and wrote or finished the pieces below at my request. The conversion
+of the tree to the AST is by the AI. The grammar rules, the `rule!`
 and `term!` macros are still those of October, by the AI.
 
 | Element | Who |
@@ -259,7 +262,8 @@ and `term!` macros are still those of October, by the AI.
 | `ParsingTable`: Reduce, Accept, conflict errors | AI, at my request |
 | Loop of `Parser::run` | Me (draft), fixed by AI |
 | `TreeNode` and building the tree | Me (start), finished by AI |
-| Display of a state, splitting `parsing_table.rs` into a folder, imports | AI, at my request |
+| Display of a state and of the tree (`--tree`), splitting `parsing_table.rs` into a folder, imports | AI, at my request |
+| Conversion of the tree to the AST (`convert_to_ast_tree`, November 28) | AI: the October post-parser, restored and adapted to the new tree |
 | Tests, commits | AI |
 
 ## How I used the AI
